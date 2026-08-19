@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
-import client, { setStoredToken, setStoredRefreshToken } from "../api/client";
+import client, { setStoredToken, setStoredRefreshToken, isNative } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { getHealthReadings, getPatients } from "../api/health";
+import WatchConnect from "../components/WatchConnect";
+import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import {
   Heart,
   Droplet,
@@ -132,6 +135,15 @@ const translations = {
     // User Management
     userManagement: "Gerenciamento de Usuários",
     
+    // Health
+    healthReadings: "Leituras de Saúde",
+    heartRate: "Frequência Cardíaca",
+    spo2: "SpO₂",
+    bloodPressure: "Pressão Arterial",
+    noReadings: "Sem leituras disponíveis",
+    totalReadings: "Total de Leituras",
+    lastReading: "Última Leitura",
+    
     // Language
     language: "Idioma",
     portuguese: "Português",
@@ -236,6 +248,15 @@ const translations = {
     
     // User Management
     userManagement: "User Management",
+    
+    // Health
+    healthReadings: "Health Readings",
+    heartRate: "Heart Rate",
+    spo2: "SpO₂",
+    bloodPressure: "Blood Pressure",
+    noReadings: "No readings available",
+    totalReadings: "Total Readings",
+    lastReading: "Last Reading",
     
     // Language
     language: "Language",
@@ -583,12 +604,16 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
   const [currentHydration, setCurrentHydration] = useState(65);
   const [notifications, setNotifications] = useState(generateMockNotifications(language));
   const [history, setHistory] = useState(generateHydrationHistory(user.id));
+  const [readings, setReadings] = useState([]);
+  const [liveHealth, setLiveHealth] = useState(null);
+  const [loadingReadings, setLoadingReadings] = useState(true);
 
   // Update notifications when language changes
   useEffect(() => {
     setNotifications(generateMockNotifications(language));
   }, [language]);
 
+  // Hydration simulation
   useEffect(() => {
     const interval = setInterval(() => {
       const change = (Math.random() - 0.5) * 5;
@@ -603,6 +628,32 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
     }, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch health readings from API
+  const fetchReadings = async () => {
+    try {
+      const { data } = await getHealthReadings();
+      setReadings(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch health readings:', err);
+    } finally {
+      setLoadingReadings(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReadings();
+    const interval = setInterval(fetchReadings, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleHealthUpdate = (displayed) => {
+    setLiveHealth(displayed);
+  };
+
+  const handleDisconnect = () => {
+    setLiveHealth(null);
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const status = currentHydration < 50 ? "low" : currentHydration > 80 ? "high" : "normal";
@@ -641,6 +692,16 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
 
       {/* Main Content */}
       <div className="flex-1 p-4 overflow-y-auto">
+        {/* Watch / Health Readings */}
+        {isNative ? (
+          <WatchConnect
+            onHealthUpdate={handleHealthUpdate}
+            onDisconnect={handleDisconnect}
+          />
+        ) : (
+          <WatchHealthDisplay readings={readings} loading={loadingReadings} />
+        )}
+
         {/* Hydration Card */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
           <div className="flex items-center justify-between mb-4">
@@ -745,38 +806,69 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
 // ─── DOCTOR DASHBOARD ──────────────────────────────────────────────────────────
 const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
   const t = translations[language];
-  const [patients, setPatients] = useState(mockPatients);
+  const [patients, setPatients] = useState([]);
+  const [readingsMap, setReadingsMap] = useState({});
   const [notifications, setNotifications] = useState(generateMockNotifications(language));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setNotifications(generateMockNotifications(language));
   }, [language]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPatients((prev) =>
-        prev.map((p) => ({
-          ...p,
-          hydrationLevel: Math.round(Math.max(30, Math.min(95, p.hydrationLevel + (Math.random() - 0.5) * 8))),
-          lastReading: new Date().toISOString(),
-        }))
-      );
-    }, 15000);
+    const fetchData = async () => {
+      try {
+        const [patientsRes, readingsRes] = await Promise.all([
+          getPatients(),
+          getHealthReadings(),
+        ]);
+        const patientsData = Array.isArray(patientsRes.data) ? patientsRes.data : [];
+        const readingsData = Array.isArray(readingsRes.data) ? readingsRes.data : [];
+
+        setPatients(patientsData);
+
+        const map = {};
+        readingsData.forEach(r => {
+          const pid = r.patientId || r.patient?.id;
+          if (!map[pid]) map[pid] = [];
+          map[pid].push(r);
+        });
+        setReadingsMap(map);
+      } catch (err) {
+        console.error('Failed to fetch doctor data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const alertPatients = patients.filter((p) => p.status !== "normal");
+
+  const getPatientLatestReading = (patientId) => {
+    const list = readingsMap[patientId];
+    return list && list.length > 0 ? list[0] : null;
+  };
+
+  const alertPatients = patients.filter((p) => {
+    const reading = getPatientLatestReading(p.id);
+    if (!reading) return false;
+    const hr = reading.heartRate;
+    return hr !== null && (hr < 50 || hr > 120);
+  });
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 text-black">
       {/* Header */}
       <div className="bg-white shadow-sm p-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full" />
           <div>
             <h2 className="font-semibold text-gray-800">{user.name}</h2>
-            <p className="text-xs text-gray-500">{user.specialization}</p>
+            <p className="text-xs text-gray-500">{user.specialization || t.doctor}</p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -820,24 +912,33 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) 
               {t.patientsNeedingAttention}
             </h3>
             <div className="space-y-3">
-              {alertPatients.map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-red-500" />
+              {alertPatients.map((p) => {
+                const reading = getPatientLatestReading(p.id);
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => onNavigate("patient-detail", p.id)}
+                    className="flex items-center justify-between p-3 bg-red-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-red-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{p.user?.name || p.name}</p>
+                        <p className="text-xs text-gray-500">
+                          ❤️ {reading?.heartRate !== null ? `${reading.heartRate} BPM` : '--'}
+                          {reading?.spo2 !== null ? ` | 🫁 ${reading.spo2}%` : ''}
+                          {reading?.bloodPressure ? ` | 🩸 ${reading.bloodPressure}` : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                      <p className="text-xs text-gray-500">{t.currentHydration}: {p.hydrationLevel}%</p>
-                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">
+                      {t.critical}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    p.status === "low" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
-                  }`}>
-                    {p.status === "low" ? t.low : t.high}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -845,33 +946,49 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) 
         {/* All Patients */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.allPatients}</h3>
-          <div className="space-y-3">
-            {patients.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => onNavigate("patient-detail", p.id)}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-              >
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={`https://i.pravatar.cc/150?img=${p.id === "p1" ? 1 : p.id === "p2" ? 5 : 8}`}
-                    alt={p.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                    <p className="text-xs text-gray-500">Age: {p.age}</p>
+          {loading ? (
+            <p className="text-xs text-gray-500">Loading...</p>
+          ) : patients.length === 0 ? (
+            <p className="text-xs text-gray-500">{t.noReadings}</p>
+          ) : (
+            <div className="space-y-3">
+              {patients.map((p) => {
+                const reading = getPatientLatestReading(p.id);
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => onNavigate("patient-detail", p.id)}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{p.user?.name || p.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {reading ? (
+                            <>
+                              ❤️ {reading.heartRate !== null ? `${reading.heartRate} BPM` : '--'}
+                              {reading.spo2 !== null ? ` | 🫁 ${reading.spo2}%` : ''}
+                              {reading.bloodPressure ? ` | 🩸 ${reading.bloodPressure}` : ''}
+                            </>
+                          ) : (
+                            t.noReadings
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">
+                        {reading?.createdAt ? new Date(reading.createdAt).toLocaleTimeString() : ''}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-800">{Math.round(p.hydrationLevel)}%</p>
-                  <p className="text-xs text-gray-500">
-                    {p.hydrationLevel < 50 ? "↓" : p.hydrationLevel > 80 ? "↑" : "→"}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1477,33 +1594,24 @@ const AnalyticsPage = ({ onBack, language, setLanguage }) => {
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("login");
   const [pageParams, setPageParams] = useState(null);
   const [language, setLanguage] = useState("pt");
+  const [currentPage, setCurrentPage] = useState("login");
   const { user: authUser, loading: authLoading, setUser: setAuthUser } = useAuth();
-
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     if (authUser) {
-      setUser(authUser);
       setCurrentPage(authUser.role);
-    } else if (!authLoading) {
-      setUser(null);
-      setCurrentPage("login");
     }
-  }, [authUser, authLoading]);
+  }, [authUser]);
 
   const handleLogin = (userData) => {
-    setUser(userData);
     setAuthUser(userData);
-    setCurrentPage(userData.role);
   };
 
   const handleLogout = () => {
     setStoredToken(null);
     setStoredRefreshToken(null);
-    setUser(null);
     setAuthUser(null);
     setCurrentPage("login");
   };
@@ -1514,17 +1622,32 @@ export default function App() {
   };
 
   const goBack = () => {
-    setCurrentPage(user ? user.role : "login");
+    setCurrentPage("login");
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  const user = authUser;
 
   const renderPage = () => {
     const commonProps = { language, setLanguage };
 
+    if (!user) {
+      switch (currentPage) {
+        case "register":
+          return <RegisterPage onLogin={handleLogin} onBack={goBack} {...commonProps} />;
+        default:
+          return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
+      }
+    }
+
     switch (currentPage) {
-      case "login":
-        return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
-      case "register":
-        return <RegisterPage onLogin={handleLogin} onBack={goBack} {...commonProps} />;
       case "patient":
         return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
       case "doctor":
@@ -1544,7 +1667,7 @@ export default function App() {
       case "analytics":
         return <AnalyticsPage onBack={goBack} {...commonProps} />;
       default:
-        return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
+        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
     }
   };
 
