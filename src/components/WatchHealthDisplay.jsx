@@ -4,6 +4,7 @@ import SimpleChart from "./SimpleChart";
 const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   const [chartMetric, setChartMetric] = useState("heartRate");
   const [chartType, setChartType] = useState("line");
+  const [period, setPeriod] = useState("daily");
 
   if (loading) {
     return (
@@ -23,9 +24,22 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
     );
   }
 
-  const latest = readings[0];
-  const recent = readings.slice(0, 6);
-  const chartData = readings
+  const getFilteredReadings = () => {
+    const now = new Date();
+    let cutoff;
+    if (period === "daily") {
+      cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    } else if (period === "weekly") {
+      cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else {
+      cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    return readings.filter((r) => new Date(r.createdAt) >= cutoff);
+  };
+
+  const filteredReadings = getFilteredReadings();
+  const latest = filteredReadings[0] || readings[0];
+  const chartData = filteredReadings
     .slice()
     .reverse()
     .map((r) => ({
@@ -38,6 +52,8 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
           : r.systolic,
     }))
     .filter((d) => d.level !== null && d.level !== undefined);
+
+  const displayRecent = filteredReadings.slice(0, 6);
 
   const chartColor =
     chartMetric === "heartRate" ? "#ef4444" : chartMetric === "spo2" ? "#3b82f6" : "#8b5cf6";
@@ -83,14 +99,14 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs text-gray-500">📈 Total Readings</p>
-          <p className="text-lg font-bold text-gray-800">{readings.length}</p>
+          <p className="text-lg font-bold text-gray-800">{filteredReadings.length}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold text-gray-700">{chartTitle}</h4>
-          <div className="flex space-x-2">
+        <div className="mb-3">
+          <h4 className="text-sm font-semibold text-gray-700 mb-2">{chartTitle}</h4>
+          <div className="flex flex-wrap gap-2">
             {[
               { key: "heartRate", label: "HR" },
               { key: "spo2", label: "SpO₂" },
@@ -108,6 +124,27 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
                 {option.label}
               </button>
             ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {[
+            { key: "daily", label: "Daily" },
+            { key: "weekly", label: "Weekly" },
+            { key: "monthly", label: "Monthly" },
+          ].map((option) => (
+            <button
+              key={option.key}
+              onClick={() => setPeriod(option.key)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                period === option.key
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+          <div className="flex gap-2 ml-auto">
             <button
               onClick={() => setChartType("line")}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -139,7 +176,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
 
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-xs font-medium text-gray-700">Recent Readings</h4>
-        {readings.length > 6 && (
+        {filteredReadings.length > 6 && (
           <button
             onClick={onViewAll}
             className="text-xs text-blue-500 hover:text-blue-600 font-medium"
@@ -160,7 +197,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
             </tr>
           </thead>
           <tbody>
-            {recent.map((r, i) => (
+            {displayRecent.map((r, i) => (
               <tr key={r.id || i} className="border-t text-gray-700">
                 <td className="p-2 text-gray-700">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '--'}</td>
                 <td className="p-2 text-gray-700">{r.heartRate !== null ? `${r.heartRate} BPM` : '--'}</td>
