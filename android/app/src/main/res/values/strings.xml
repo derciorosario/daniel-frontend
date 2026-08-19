@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HydraWatch</string>
+    <string name="title_activity_main">HydraWatch</string>
+    <string name="package_name">com.jrmultiservicos.app</string>
+    <string name="custom_url_scheme">com.jrmultiservicos.app</string>
+     <string name="server_client_id">948091734466-a2heombd6g4shukgva6uvj6cgik8el4g.apps.googleusercontent.com</string>
+</resources>
