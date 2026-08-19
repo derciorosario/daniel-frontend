@@ -1,3169 +1,1558 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { BleClient } from '@capacitor-community/bluetooth-le'
-import { isNative } from '../api/client'
+import { useState, useEffect } from "react";
+import client, { setStoredToken, setStoredRefreshToken } from "../api/client";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  Heart,
+  Droplet,
+  Bell,
+  User,
+  Users,
+  Settings,
+  LogOut,
+  Activity,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  BarChart3,
+  PieChart,
+  Shield,
+  Stethoscope,
+  Smartphone,
+  Calendar,
+  FileText,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+} from "lucide-react";
+import RegisterPage from "./Register";
 
-// ============================================================
-// STANDARD BLE SERVICES
-// ============================================================
+// ─── TRANSLATIONS ───────────────────────────────────────────────────────────────
+const translations = {
+  pt: {
+    // Common
+    appName: "HydraWatch",
+    subtitle: "Monitoramento Inteligente de Saúde",
+    signIn: "Entrar",
+    register: "Criar Conta",
+    name: "Nome",
+    email: "E-mail",
+    password: "Senha",
+    patient: "Paciente",
+    doctor: "Médico",
+    admin: "Admin",
+    notifications: "Notificações",
+    settings: "Configurações",
+    logout: "Sair",
+    back: "Voltar",
+    haveAccount: "Já tem conta?",
+    noAccount: "Não tem conta?",
+    
+    // Patient Dashboard
+    currentHydration: "Hidratação Atual",
+    dailyIntake: "Ingestão diária",
+    todaysIntake: "Ingestão de Hoje",
+    lastReading: "Última Leitura",
+    sevenDayHistory: "Histórico de 7 Dias",
+    recentAlerts: "Alertas Recentes",
+    dashboard: "Painel",
+    history: "Histórico",
+    
+    // Status
+    normal: "Normal",
+    low: "Baixo",
+    high: "Alto",
+    critical: "Crítico",
+    
+    // Doctor Dashboard
+    totalPatients: "Total de Pacientes",
+    alerts: "Alertas",
+    patientsNeedingAttention: "Pacientes que Precisam de Atenção",
+    allPatients: "Todos os Pacientes",
+    patients: "Pacientes",
+    analytics: "Análises",
+    
+    // Admin Dashboard
+    administrator: "Administrador",
+    systemStatus: "Status do Sistema",
+    operational: "Operacional",
+    quickActions: "Ações Rápidas",
+    manageUsers: "Gerenciar Usuários",
+    viewAnalytics: "Ver Análises",
+    systemAlerts: "Alertas do Sistema",
+    overview: "Visão Geral",
+    users: "Usuários",
+    
+    // Settings
+    darkMode: "Modo Escuro",
+    on: "Ativado",
+    off: "Desativado",
+    enabled: "Ativado",
+    
+    // Analytics
+    avgHydration: "Hidratação Média",
+    lowHydration: "Baixa Hidratação",
+    highHydration: "Alta Hidratação",
+    totalReadings: "Total de Leituras",
+    hydrationDistribution: "Distribuição de Hidratação",
+    normalRange: "Normal (50-80%)",
+    lowRange: "Baixo (<50%)",
+    highRange: "Alto (>80%)",
+    
+    // Notifications
+    lowHydrationAlert: "Alerta de Baixa Hidratação",
+    drinkWaterMsg: "Seu nível de hidratação caiu para {level}%. Beba água imediatamente.",
+    patientAlert: "Alerta de Paciente",
+    patientAlertMsg: "Os níveis de hidratação de {name} caíram significativamente na última hora.",
+    hydrationReminder: "Lembrete de Hidratação",
+    reminderMsg: "Hora de beber água! Você está {percent}% abaixo da sua meta diária.",
+    systemAlert: "Alerta do Sistema",
+    systemAlertMsg: "{count} pacientes têm níveis de hidratação anormais que requerem atenção.",
+    
+    // History
+    hydrationHistory: "Histórico de Hidratação",
+    fourteenDayTrend: "Tendência de 14 Dias",
+    dailyRecords: "Registros Diários",
+    
+    // Patient Detail
+    patientDetails: "Detalhes do Paciente",
+    healthStatistics: "Estatísticas de Saúde",
+    avg: "Média",
+    min: "Mínimo",
+    max: "Máximo",
+    thirtyDayHistory: "Histórico de 30 Dias",
+    healthReport: "Relatório de Saúde",
+    lastCheckup: "Último Check-up",
+    doctor_placeholder: "Médico",
+    status: "Status",
+    
+    // User Management
+    userManagement: "Gerenciamento de Usuários",
+    
+    // Language
+    language: "Idioma",
+    portuguese: "Português",
+    english: "Inglês",
+  },
+  en: {
+    // Common
+    appName: "HydraWatch",
+    subtitle: "Smart Healthcare Monitoring",
+    signIn: "Sign In",
+    register: "Create Account",
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    patient: "Patient",
+    doctor: "Doctor",
+    admin: "Admin",
+    notifications: "Notifications",
+    settings: "Settings",
+    logout: "Log Out",
+    back: "Back",
+    haveAccount: "Already have an account?",
+    noAccount: "Don't have an account?",
+    
+    // Patient Dashboard
+    currentHydration: "Current Hydration",
+    dailyIntake: "Daily intake",
+    todaysIntake: "Today's Intake",
+    lastReading: "Last Reading",
+    sevenDayHistory: "7-Day History",
+    recentAlerts: "Recent Alerts",
+    dashboard: "Dashboard",
+    history: "History",
+    
+    // Status
+    normal: "Normal",
+    low: "Low",
+    high: "High",
+    critical: "Critical",
+    
+    // Doctor Dashboard
+    totalPatients: "Total Patients",
+    alerts: "Alerts",
+    patientsNeedingAttention: "Patients Needing Attention",
+    allPatients: "All Patients",
+    patients: "Patients",
+    analytics: "Analytics",
+    
+    // Admin Dashboard
+    administrator: "Administrator",
+    systemStatus: "System Status",
+    operational: "Operational",
+    quickActions: "Quick Actions",
+    manageUsers: "Manage Users",
+    viewAnalytics: "View Analytics",
+    systemAlerts: "System Alerts",
+    overview: "Overview",
+    users: "Users",
+    
+    // Settings
+    darkMode: "Dark Mode",
+    on: "On",
+    off: "Off",
+    enabled: "Enabled",
+    
+    // Analytics
+    avgHydration: "Avg Hydration",
+    lowHydration: "Low Hydration",
+    highHydration: "High Hydration",
+    totalReadings: "Total Readings",
+    hydrationDistribution: "Hydration Distribution",
+    normalRange: "Normal (50-80%)",
+    lowRange: "Low (<50%)",
+    highRange: "High (>80%)",
+    
+    // Notifications
+    lowHydrationAlert: "Low Hydration Alert",
+    drinkWaterMsg: "Your hydration level has dropped to {level}%. Please drink water immediately.",
+    patientAlert: "Patient Alert",
+    patientAlertMsg: "{name}'s hydration level dropped significantly in the last hour.",
+    hydrationReminder: "Hydration Reminder",
+    reminderMsg: "Time to drink water! You're {percent}% below your daily target.",
+    systemAlert: "System Alert",
+    systemAlertMsg: "{count} patients have abnormal hydration levels requiring attention.",
+    
+    // History
+    hydrationHistory: "Hydration History",
+    fourteenDayTrend: "14-Day Trend",
+    dailyRecords: "Daily Records",
+    
+    // Patient Detail
+    patientDetails: "Patient Details",
+    healthStatistics: "Health Statistics",
+    avg: "Avg",
+    min: "Min",
+    max: "Max",
+    thirtyDayHistory: "30-Day History",
+    healthReport: "Health Report",
+    lastCheckup: "Last Checkup",
+    doctor_placeholder: "Doctor",
+    status: "Status",
+    
+    // User Management
+    userManagement: "User Management",
+    
+    // Language
+    language: "Language",
+    portuguese: "Português",
+    english: "English",
+  },
+};
 
-const HEART_RATE_SERVICE =
-  '0000180d-0000-1000-8000-00805f9b34fb'
+// ─── MOCK DATA ───────────────────────────────────────────────────────────────
+const mockUsers = {
+  patient: {
+    id: "p1",
+    name: "John Smith",
+    email: "john.smith@email.com",
+    role: "patient",
+    avatar: "https://i.pravatar.cc/150?img=1",
+    doctorId: "d1",
+    hydrationTarget: 2500, // ml per day
+  },
+  doctor: {
+    id: "d1",
+    name: "Dr. Sarah Johnson",
+    email: "sarah.johnson@hospital.com",
+    role: "doctor",
+    avatar: "https://i.pravatar.cc/150?img=5",
+    specialization: "Internal Medicine",
+    patients: ["p1", "p2", "p3"],
+  },
+  admin: {
+    id: "a1",
+    name: "Admin User",
+    email: "admin@healthsystem.com",
+    role: "admin",
+    avatar: "https://i.pravatar.cc/150?img=10",
+  },
+};
 
-const HEART_RATE_CHARACTERISTIC =
-  '00002a37-0000-1000-8000-00805f9b34fb'
+const mockPatients = [
+  {
+    id: "p1",
+    name: "John Smith",
+    age: 34,
+    gender: "Male",
+    hydrationLevel: 65, // percentage
+    lastReading: "2024-01-15T10:30:00Z",
+    status: "normal",
+    dailyIntake: 1800,
+    targetIntake: 2500,
+  },
+  {
+    id: "p2",
+    name: "Emily Davis",
+    age: 28,
+    gender: "Female",
+    hydrationLevel: 42,
+    lastReading: "2024-01-15T10:25:00Z",
+    status: "low",
+    dailyIntake: 1200,
+    targetIntake: 2200,
+  },
+  {
+    id: "p3",
+    name: "Michael Brown",
+    age: 45,
+    gender: "Male",
+    hydrationLevel: 82,
+    lastReading: "2024-01-15T10:20:00Z",
+    status: "high",
+    dailyIntake: 2800,
+    targetIntake: 2500,
+  },
+];
 
-const BATTERY_SERVICE =
-  '0000180f-0000-1000-8000-00805f9b34fb'
-
-const BATTERY_CHARACTERISTIC =
-  '00002a19-0000-1000-8000-00805f9b34fb'
-
-const DEVICE_INFORMATION_SERVICE =
-  '0000180a-0000-1000-8000-00805f9b34fb'
-
-const HID_SERVICE =
-  '00001812-0000-1000-8000-00805f9b34fb'
-
-// ============================================================
-// HIWATCH / NORDIC UART
-// ============================================================
-
-const HIWATCH_UART_SERVICE =
-  '6e400801-b5a3-f393-e0a9-e50e24dcca9d'
-
-const HIWATCH_UART_TX =
-  '6e400002-b5a3-f393-e0a9-e50e24dcca9d'
-
-const HIWATCH_UART_RX =
-  '6e400003-b5a3-f393-e0a9-e50e24dcca9d'
-
-// ============================================================
-// CUSTOM SERVICES
-// ============================================================
-
-const CUSTOM_FFFF_SERVICE =
-  '0000ffff-0000-1000-8000-00805f9b34fb'
-
-const CUSTOM_3802_SERVICE =
-  '00003802-0000-1000-8000-00805f9b34fb'
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-const normalizeUUID = uuid =>
-  String(uuid || '').toLowerCase()
-
-
-const getBytes = value => {
-
-  if (!value)
-    return []
-
-  if (value instanceof DataView) {
-
-    return Array.from(
-      new Uint8Array(
-        value.buffer,
-        value.byteOffset,
-        value.byteLength
-      )
-    )
-
+const generateHydrationHistory = (patientId, days = 7) => {
+  const history = [];
+  const now = new Date();
+  for (let i = days * 24; i >= 0; i -= 2) {
+    const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+    const baseLevel = 60 + Math.sin(i / 24) * 15;
+    const variation = (Math.random() - 0.5) * 10;
+    history.push({
+      time: time.toISOString(),
+      level: Math.round(Math.max(30, Math.min(95, baseLevel + variation))),
+      intake: Math.floor(1500 + Math.random() * 1000),
+    });
   }
-
-  if (value instanceof Uint8Array)
-    return Array.from(value)
-
-  if (Array.isArray(value))
-    return Array.from(value)
-
-  try {
-
-    return Array.from(value)
-
-  } catch {
-
-    return []
-
-  }
-
-}
-
-
-const bytesToHex = value => {
-
-  return getBytes(value)
-    .map(
-      byte =>
-        byte
-          .toString(16)
-          .padStart(2, '0')
-          .toUpperCase()
-    )
-    .join(' ')
-
-}
-
-
-const bytesToAscii = value => {
-
-  return getBytes(value)
-    .map(byte => {
-
-      if (
-        byte >= 32 &&
-        byte <= 126
-      ) {
-
-        return String.fromCharCode(byte)
-
-      }
-
-      return '.'
-
-    })
-    .join('')
-
-}
-
-
-const bytesToUTF8 = value => {
-
-  try {
-
-    return new TextDecoder(
-      'utf-8'
-    ).decode(
-      new Uint8Array(
-        getBytes(value)
-      )
-    )
-
-  } catch {
-
-    return ''
-
-  }
-
-}
-
-
-const hexByte = value => {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return '--'
-
-  }
-
-  return value
-    .toString(16)
-    .padStart(2, '0')
-    .toUpperCase()
-
-}
-
-
-// ============================================================
-// UUID NAME
-// ============================================================
-
-const uuidName = uuid => {
-
-  const u =
-    normalizeUUID(uuid)
-
-  switch (u) {
-
-    case HEART_RATE_SERVICE:
-      return '❤️ Standard Heart Rate'
-
-    case BATTERY_SERVICE:
-      return '🔋 Battery'
-
-    case DEVICE_INFORMATION_SERVICE:
-      return 'ℹ️ Device Information'
-
-    case HID_SERVICE:
-      return '⌨️ HID'
-
-    case HIWATCH_UART_SERVICE:
-      return '⌚ HiWatch / NUS'
-
-    case CUSTOM_FFFF_SERVICE:
-      return '🔧 Custom FFFF'
-
-    case CUSTOM_3802_SERVICE:
-      return '🔧 Custom 3802'
-
-    case '00001800-0000-1000-8000-00805f9b34fb':
-      return 'Generic Access'
-
-    case '00001801-0000-1000-8000-00805f9b34fb':
-      return 'Generic Attribute'
-
-    default:
-      return 'Unknown / Custom'
-
-  }
-
-}
-
-
-// ============================================================
-// NUS PACKET ANALYSIS
-// ============================================================
-
-const analyzeNUSPacket = value => {
-
-  const bytes =
-    getBytes(value)
-
-  const packet = {
-
-    length:
-      bytes.length,
-
-    bytes,
-
-    hex:
-      bytesToHex(value),
-
-    ascii:
-      bytesToAscii(value),
-
-    utf8:
-      bytesToUTF8(value),
-
-    firstByte:
-      bytes.length > 0
-        ? bytes[0]
-        : null,
-
-    secondByte:
-      bytes.length > 1
-        ? bytes[1]
-        : null,
-
-    command:
-      bytes.length > 3
-        ? bytes[3]
-        : null,
-
-    subCommand:
-      bytes.length > 4
-        ? bytes[4]
-        : null,
-
-    byte5:
-      bytes.length > 5
-        ? bytes[5]
-        : null,
-
-    byte6:
-      bytes.length > 6
-        ? bytes[6]
-        : null,
-
-    byte7:
-      bytes.length > 7
-        ? bytes[7]
-        : null,
-
-    uint8: [],
-
-    uint16LE: [],
-
-    uint16BE: []
-
-  }
-
-
-  packet.uint8 =
-    bytes.map(
-      (byte, index) => ({
-        index,
-        value: byte
-      })
-    )
-
-
-  for (
-    let i = 0;
-    i < bytes.length - 1;
-    i++
-  ) {
-
-    packet.uint16LE.push({
-
-      offset:
-        i,
-
-      value:
-        bytes[i] |
-        (bytes[i + 1] << 8)
-
-    })
-
-  }
-
-
-  for (
-    let i = 0;
-    i < bytes.length - 1;
-    i++
-  ) {
-
-    packet.uint16BE.push({
-
-      offset:
-        i,
-
-      value:
-        (bytes[i] << 8) |
-        bytes[i + 1]
-
-    })
-
-  }
-
-
-  return packet
-
-}
-
-
-// ============================================================
-// IMPORTANT HIWATCH PACKET DECODER
-// ============================================================
-//
-// Based on the packets observed from the T900 Ultra 2:
-//
-// CD 00 11 15 01 0E 00 0C 35 12 00 01 00 01
-// 21 B8 62 53 74 4C
-//
-// CD 00 11 15 01 0E 00 0C 35 12 00 01 00 01
-// 21 BD 62 53 74 4C
-//
-// CD 00 11 15 01 0E 00 0C 35 12 00 01 00 01
-// 21 C2 61 50 73 46
-//
-// The final bytes change while the watch health screen
-// updates.
-//
-// We therefore preserve the entire packet and expose
-// candidate decoded values.
-//
-// DO NOT treat these offsets as an officially documented
-// HiWatch protocol specification.
-// ============================================================
-
-
-
-
-const decodeHiWatchHealth = bytes => {
-
-  const result = {
-
-    heartRate:
-      null,
-
-    spo2:
-      null,
-
-    systolic:
-      null,
-
-    diastolic:
-      null,
-
-    bloodPressure:
-      null,
-
-    confidence:
-      'candidate',
-
-    source:
-      'HiWatch proprietary NUS packet',
-
-    rawHealthBytes:
-      []
-
-  }
-
-
-  if (
-    !bytes ||
-    bytes.length < 20
-  ) {
-
-    return result
-
-  }else{
-      result.heartRate=bytes[bytes.length - 1]
-      result.systolic=bytes[bytes.length - 2]
-      result.diastolic=bytes[bytes.length - 3]
-      result.bloodPressure = `${result.diastolic}/${result.systolic}`
-      result.spo2=bytes[bytes.length - 4]
-  }
-
-
-  // ----------------------------------------------------------
-  // Observed packet structure
-  // ----------------------------------------------------------
-
-  //
-  // index:
-  //
-  //  0 CD
-  //  1 00
-  //  2 11
-  //  3 15
-  //  4 01
-  //  5 0E
-  //  6 00
-  //  7 0C
-  //  8 35
-  //  9 12
-  // 10 00
-  // 11 01
-  // 12 00
-  // 13 01
-  // 14 21
-  // 15 B8
-  // 16 62
-  // 17 53
-  // 18 74
-  // 19 4C
-  //
-  // ----------------------------------------------------------
-
-  const b15 =
-    bytes[15]
-
-  const b16 =
-    bytes[16]
-
-  const b17 =
-    bytes[17]
-
-  const b18 =
-    bytes[18]
-
-  const b19 =
-    bytes[19]
-
-
-  result.rawHealthBytes = [
-
+  return history;
+};
+
+const generateMockNotifications = (lang = "pt") => {
+  const t = translations[lang];
+  return [
     {
-      index: 15,
-      hex: hexByte(b15),
-      value: b15
+      id: "n1",
+      userId: "p1",
+      type: "alert",
+      title: t.lowHydrationAlert,
+      message: t.drinkWaterMsg.replace("{level}", "45"),
+      time: "2024-01-15T09:15:00Z",
+      read: false,
+      priority: "high",
     },
-
     {
-      index: 16,
-      hex: hexByte(b16),
-      value: b16
+      id: "n2",
+      userId: "d1",
+      type: "patient_alert",
+      title: t.patientAlert,
+      message: t.patientAlertMsg.replace("{name}", "John Smith"),
+      time: "2024-01-15T09:15:00Z",
+      read: false,
+      priority: "high",
+      patientId: "p1",
     },
-
     {
-      index: 17,
-      hex: hexByte(b17),
-      value: b17
+      id: "n3",
+      userId: "p1",
+      type: "reminder",
+      title: t.hydrationReminder,
+      message: t.reminderMsg.replace("{percent}", "20"),
+      time: "2024-01-15T08:00:00Z",
+      read: true,
+      priority: "medium",
     },
-
     {
-      index: 18,
-      hex: hexByte(b18),
-      value: b18
+      id: "n4",
+      userId: "a1",
+      type: "system",
+      title: t.systemAlert,
+      message: t.systemAlertMsg.replace("{count}", "3"),
+      time: "2024-01-15T07:30:00Z",
+      read: false,
+      priority: "high",
     },
-
-    {
-      index: 19,
-      hex: hexByte(b19),
-      value: b19
-    }
-
-  ]
-
-
-  // ----------------------------------------------------------
-  // Candidate interpretation
-  // ----------------------------------------------------------
-  //
-  // IMPORTANT:
-  //
-  // These are intentionally conservative.
-  //
-  // The repeated 62 / 61 values are plausible SpO2-like
-  // encoded fields but are NOT directly 98/97.
-  //
-  // The changing sequence B8 BD C2 C7 CC D1 D6 appears
-  // highly interesting and should be investigated further.
-  //
-  // We do not falsely convert it into BPM.
-  //
-  // ----------------------------------------------------------
-
-  result.candidates = {
-
-    byte15: b15,
-
-    byte16: b16,
-
-    byte17: b17,
-
-    byte18: b18,
-
-    byte19: b19,
-
-    possibleSpO2Byte:
-      b16 >= 70 &&
-      b16 <= 100
-        ? b16
-        : null,
-
-    possibleHeartRateBytes:
-      [
-        b15,
-        b16,
-        b17,
-        b18,
-        b19
-      ].filter(
-        value =>
-          value >= 30 &&
-          value <= 220
-      )
-
-  }
-
-
-  return result
-
-}
-
-
-// ============================================================
-// POTENTIAL HEALTH VALUE SCANNER
-// ============================================================
-
-const findPotentialHealthValues = bytes => {
-
-  const result = {
-
-    possibleHeartRate: [],
-
-    possibleSpO2: [],
-
-    possibleBloodPressure: [],
-
-    possible16BitValues: []
-
-  }
-
-
-  bytes.forEach(
-    (byte, index) => {
-
-      if (
-        byte >= 30 &&
-        byte <= 220
-      ) {
-
-        result.possibleHeartRate.push({
-
-          index,
-
-          value:
-            byte
-
-        })
-
-      }
-
-
-      if (
-        byte >= 70 &&
-        byte <= 100
-      ) {
-
-        result.possibleSpO2.push({
-
-          index,
-
-          value:
-            byte
-
-        })
-
-      }
-
-
-      if (
-        byte >= 40 &&
-        byte <= 250
-      ) {
-
-        result.possibleBloodPressure.push({
-
-          index,
-
-          value:
-            byte
-
-        })
-
-      }
-
-    }
-  )
-
-
-  for (
-    let i = 0;
-    i < bytes.length - 1;
-    i++
-  ) {
-
-    const value =
-      bytes[i] |
-      (bytes[i + 1] << 8)
-
-
-    if (
-      value >= 30 &&
-      value <= 250
-    ) {
-
-      result.possible16BitValues.push({
-
-        offset:
-          i,
-
-        value
-
-      })
-
-    }
-
-  }
-
-
-  return result
-
-}
-
-
-// ============================================================
-// MAIN COMPONENT
-// ============================================================
-
-export default function Home() {
-
-  const [initialized, setInitialized] =
-    useState(false)
-
-  const [scanning, setScanning] =
-    useState(false)
-
-  const [devices, setDevices] =
-    useState([])
-
-  const [connectedDevice, setConnectedDevice] =
-    useState(null)
-
-  const [services, setServices] =
-    useState([])
-
-  const [serviceSummary, setServiceSummary] =
-    useState([])
-
-  const [logs, setLogs] =
-    useState([])
-
-  const [packets, setPackets] =
-    useState([])
-
-  const [batteryLevel, setBatteryLevel] =
-    useState(null)
-
-  const [heartRate, setHeartRate] =
-    useState(null)
-
-  const [watchHeartRate, setWatchHeartRate] =
-    useState(null)
-
-  const [watchSpo2, setWatchSpo2] =
-    useState(null)
-
-  const [watchBloodPressure, setWatchBloodPressure] =
-    useState(null)
-
-  const [deviceInformation, setDeviceInformation] =
-    useState([])
-
-  const [activeListeners, setActiveListeners] =
-    useState([])
-
-  const [status, setStatus] =
-    useState('')
-
-  const [showByteAnalysis, setShowByteAnalysis] =
-    useState(false)
-
-  const [capturing, setCapturing] =
-    useState(true)
-
-
-  // ----------------------------------------------------------
-  // Refs
-  // ----------------------------------------------------------
-
-  const connectedRef =
-    useRef(null)
-
-  const healthRef =
-    useRef({
-
-      heartRate: null,
-
-      spo2: null,
-
-      bloodPressure: null
-
+  ];
+};
+
+// ─── CHART COMPONENT ───────────────────────────────────────────────────────────
+const SimpleChart = ({ data, color = "#3b82f6" }) => {
+  const maxValue = Math.max(...data.map((d) => d.level));
+  const minValue = Math.min(...data.map((d) => d.level));
+  const range = maxValue - minValue || 1;
+
+  const points = data
+    .map((d, i) => {
+      const x = (i / (data.length - 1)) * 100;
+      const y = 100 - ((d.level - minValue) / range) * 80;
+      return `${x},${y}`;
     })
-
-
-  // ==========================================================
-  // LOG
-  // ==========================================================
-
-  const addLog = message => {
-
-    console.log(message)
-
-    setLogs(prev => [
-
-      ...prev.slice(-499),
-
-      `${new Date().toLocaleTimeString()}: ${message}`
-
-    ])
-
-  }
-
-
-  // ==========================================================
-  // INITIALIZE
-  // ==========================================================
-
-  useEffect(() => {
-
-    if (!isNative)
-      return
-
-    BleClient.initialize()
-      .then(() => {
-
-        setInitialized(true)
-
-        addLog(
-          'Bluetooth LE initialized.'
-        )
-
-      })
-      .catch(err => {
-
-        console.error(err)
-
-        addLog(
-          `BLE initialization failed: ${err.message}`
-        )
-
-      })
-
-  }, [])
-
-
-  // ==========================================================
-  // SCAN
-  // ==========================================================
-
-  const startScan = async () => {
-
-    try {
-
-      setDevices([])
-
-      setScanning(true)
-
-      setStatus('Scanning...')
-
-      addLog(
-        'Starting BLE scan...'
-      )
-
-
-      await BleClient.requestLEScan(
-        {},
-        result => {
-
-          const device = {
-
-            ...result,
-
-            deviceId:
-              result?.device?.deviceId ||
-              result?.deviceId,
-
-            name:
-              result?.device?.name ||
-              result?.name,
-
-            localName:
-              result?.device?.localName ||
-              result?.localName
-
-          }
-
-
-          if (!device.deviceId)
-            return
-
-
-          setDevices(prev => {
-
-            const exists =
-              prev.some(
-                d =>
-                  d.deviceId ===
-                  device.deviceId
-              )
-
-
-            if (exists)
-              return prev
-
-
-            addLog(
-              `Found device: ${
-                device.name ||
-                device.localName ||
-                device.deviceId
-              }`
-            )
-
-
-            return [
-              ...prev,
-              device
-            ]
-
-          })
-
-        }
-      )
-
-    } catch (err) {
-
-      setScanning(false)
-
-      addLog(
-        `Scan error: ${err.message}`
-      )
-
-    }
-
-  }
-
-
-  // ==========================================================
-  // STOP SCAN
-  // ==========================================================
-
-  const stopScan = async () => {
-
-    try {
-
-      await BleClient.stopLEScan()
-
-      setScanning(false)
-
-      addLog(
-        'Scan stopped.'
-      )
-
-    } catch (err) {
-
-      addLog(
-        `Stop scan error: ${err.message}`
-      )
-
-    }
-
-  }
-
-
-  // ==========================================================
-  // BATTERY
-  // ==========================================================
-
-  const readBattery = async deviceId => {
-
-    try {
-
-      const value =
-        await BleClient.read(
-
-          deviceId,
-
-          BATTERY_SERVICE,
-
-          BATTERY_CHARACTERISTIC
-
-        )
-
-
-      const bytes =
-        getBytes(value)
-
-
-      if (
-        bytes.length > 0 &&
-        bytes[0] <= 100
-      ) {
-
-        setBatteryLevel(
-          bytes[0]
-        )
-
-        addLog(
-          `🔋 Battery: ${bytes[0]}%`
-        )
-
-      }
-
-    } catch (err) {
-
-      addLog(
-        `Battery unavailable: ${err.message}`
-      )
-
-    }
-
-  }
-
-
-  // ==========================================================
-  // DEVICE INFORMATION
-  // ==========================================================
-
-  const readDeviceInformation = async (
-    deviceId,
-    service
-  ) => {
-
-    if (!service?.characteristics)
-      return
-
-
-    const result = []
-
-
-    for (
-      const characteristic
-      of service.characteristics
-    ) {
-
-      if (
-        characteristic.properties?.read !== true
-      ) {
-
-        continue
-
-      }
-
-
-      try {
-
-        const value =
-          await BleClient.read(
-
-            deviceId,
-
-            service.uuid,
-
-            characteristic.uuid
-
-          )
-
-
-        const bytes =
-          getBytes(value)
-
-
-        result.push({
-
-          uuid:
-            characteristic.uuid,
-
-          hex:
-            bytesToHex(value),
-
-          text:
-            bytesToUTF8(value)
-
-        })
-
-
-      } catch (err) {
-
-        addLog(
-          `Device info read failed: ${characteristic.uuid}`
-        )
-
-      }
-
-    }
-
-
-    setDeviceInformation(result)
-
-  }
-
-
-  // ==========================================================
-  // STANDARD HEART RATE
-  // ==========================================================
-
-  const startStandardHeartRate =
-    async (
-      deviceId,
-      discoveredServices
-    ) => {
-
-      const service =
-        discoveredServices.find(
-          s =>
-            normalizeUUID(s.uuid) ===
-            HEART_RATE_SERVICE
-        )
-
-
-      if (!service) {
-
-        addLog(
-          '❤️ Standard 180D Heart Rate Service not present.'
-        )
-
-        return
-
-      }
-
-
-      const characteristic =
-        service.characteristics?.find(
-          c =>
-            normalizeUUID(c.uuid) ===
-            HEART_RATE_CHARACTERISTIC
-        )
-
-
-      if (!characteristic)
-        return
-
-
-      try {
-
-        await BleClient.startNotifications(
-
-          deviceId,
-
-          HEART_RATE_SERVICE,
-
-          HEART_RATE_CHARACTERISTIC,
-
-          value => {
-
-            const bytes =
-              getBytes(value)
-
-
-            if (bytes.length < 2)
-              return
-
-
-            const flags =
-              bytes[0]
-
-
-            const bpm =
-              flags & 0x01
-
-                ? bytes[1] |
-                  (bytes[2] << 8)
-
-                : bytes[1]
-
-
-            setHeartRate(bpm)
-
-            addLog(
-              `❤️ Standard HR: ${bpm} BPM`
-            )
-
-          }
-
-        )
-
-
-        setActiveListeners(prev => [
-
-          ...prev,
-
-          {
-
-            type:
-              'Standard Heart Rate',
-
-            serviceUUID:
-              HEART_RATE_SERVICE,
-
-            characteristicUUID:
-              HEART_RATE_CHARACTERISTIC
-
-          }
-
-        ])
-
-      } catch (err) {
-
-        addLog(
-          `Standard HR listener failed: ${err.message}`
-        )
-
-      }
-
-    }
-
-
-  // ==========================================================
-  // HIWATCH NUS LISTENER
-  // ==========================================================
-
-  const startHiWatchHealthListener =
-    async deviceId => {
-
-      try {
-
-        addLog(
-          '⌚ Starting HiWatch NUS health listener...'
-        )
-
-
-        await BleClient.startNotifications(
-
-          deviceId,
-
-          HIWATCH_UART_SERVICE,
-
-          HIWATCH_UART_RX,
-
-          value => {
-
-            const bytes =
-              getBytes(value)
-
-
-            if (!bytes.length)
-              return
-
-
-            const packet =
-              analyzeNUSPacket(value)
-
-
-            const health =
-              decodeHiWatchHealth(
-                bytes
-              )
-
-
-            const potential =
-              findPotentialHealthValues(
-                bytes
-              )
-
-
-            // ==================================================
-            // IMPORTANT
-            //
-            // Do not overwrite a known health value with null.
-            // This allows the UI to keep showing the latest
-            // known reading while unrelated packets arrive.
-            // ==================================================
-
-            if (
-              health.heartRate !== null
-            ) {
-
-              healthRef.current.heartRate =
-                health.heartRate
-
-              setWatchHeartRate(
-                health.heartRate
-              )
-
-            }
-
-
-            if (
-              health.spo2 !== null
-            ) {
-
-              healthRef.current.spo2 =
-                health.spo2
-
-              setWatchSpo2(
-                health.spo2
-              )
-
-            }
-
-
-            if (
-              health.bloodPressure !== null
-            ) {
-
-              healthRef.current.bloodPressure =
-                health.bloodPressure
-
-              setWatchBloodPressure(
-                health.bloodPressure
-              )
-
-            }
-
-
-            const entry = {
-
-              id:
-                `${Date.now()}-${Math.random()}`,
-
-              time:
-                new Date().toLocaleTimeString(),
-
-              timestamp:
-                Date.now(),
-
-              ...packet,
-
-              health: {
-
-                ...health,
-
-                displayedHeartRate:
-                  healthRef.current.heartRate,
-
-                displayedSpO2:
-                  healthRef.current.spo2,
-
-                displayedBloodPressure:
-                  healthRef.current.bloodPressure
-
-              },
-
-              potential
-
-            }
-
-
-            if (capturing) {
-
-              setPackets(prev => [
-
-                ...prev,
-
-                entry
-
-              ])
-
-            }
-
-
-            // ==================================================
-            // CONSOLE
-            // ==================================================
-
-            console.log(
-              '========================================'
-            )
-
-            console.log(
-              '⌚ HIWATCH NUS PACKET'
-            )
-
-            console.log(
-              'HEX:',
-              packet.hex
-            )
-
-            console.log(
-              'BYTES:',
-              bytes
-            )
-
-            console.log(
-              'HEALTH:',
-              health
-            )
-
-            console.log(
-              'DISPLAY VALUES:',
-              {
-
-                heartRate:
-                  healthRef.current.heartRate,
-
-                spo2:
-                  healthRef.current.spo2,
-
-                bloodPressure:
-                  healthRef.current.bloodPressure
-
-              }
-            )
-
-            console.log(
-              '========================================'
-            )
-
-
-            addLog(
-              `⌚ NUS: ${packet.hex}`
-            )
-
-          }
-
-        )
-
-
-        setActiveListeners(prev => {
-
-          const exists =
-            prev.some(
-              x =>
-                x.serviceUUID ===
-                  HIWATCH_UART_SERVICE &&
-                x.characteristicUUID ===
-                  HIWATCH_UART_RX
-            )
-
-
-          if (exists)
-            return prev
-
-
-          return [
-
-            ...prev,
-
-            {
-
-              type:
-                '⌚ HiWatch / NUS Health',
-
-              serviceUUID:
-                HIWATCH_UART_SERVICE,
-
-              characteristicUUID:
-                HIWATCH_UART_RX
-
-            }
-
-          ]
-
-        })
-
-
-        addLog(
-          '⌚ HiWatch NUS listener ACTIVE.'
-        )
-
-
-      } catch (err) {
-
-        console.error(
-          'NUS listener error:',
-          err
-        )
-
-
-        addLog(
-          `NUS listener failed: ${err.message}`
-        )
-
-      }
-
-    }
-
-
-  // ==========================================================
-  // DISCOVER SERVICES
-  // ==========================================================
-
-  const discoverServices =
-    async deviceId => {
-
-      try {
-
-        const discovered =
-          await BleClient.getServices(
-            deviceId
-          )
-
-
-        setServices(
-          discovered
-        )
-
-
-        const summary =
-          discovered.map(
-            service => {
-
-              const characteristics =
-                service.characteristics ||
-                []
-
-
-              return {
-
-                uuid:
-                  service.uuid,
-
-                name:
-                  uuidName(
-                    service.uuid
-                  ),
-
-                characteristicCount:
-                  characteristics.length,
-
-                read:
-                  characteristics.filter(
-                    c =>
-                      c.properties?.read === true
-                  ).length,
-
-                write:
-                  characteristics.filter(
-                    c =>
-                      c.properties?.write === true ||
-                      c.properties?.writeWithoutResponse === true
-                  ).length,
-
-                notify:
-                  characteristics.filter(
-                    c =>
-                      c.properties?.notify === true ||
-                      c.properties?.indicate === true
-                  ).length
-
-              }
-
-            }
-          )
-
-
-        setServiceSummary(
-          summary
-        )
-
-
-        addLog(
-          `Discovered ${discovered.length} services.`
-        )
-
-
-        // ------------------------------------------------------
-        // Log ALL services / characteristics
-        // ------------------------------------------------------
-
-        discovered.forEach(service => {
-
-          addLog(
-            `SERVICE: ${service.uuid}`
-          )
-
-
-          service.characteristics?.forEach(
-            characteristic => {
-
-              addLog(
-                `  CHARACTERISTIC: ${characteristic.uuid} ` +
-                `R:${!!characteristic.properties?.read} ` +
-                `W:${!!characteristic.properties?.write} ` +
-                `N:${!!characteristic.properties?.notify}`
-              )
-
-            }
-          )
-
-        })
-
-
-        // ------------------------------------------------------
-        // BATTERY
-        // ------------------------------------------------------
-
-        if (
-          discovered.some(
-            s =>
-              normalizeUUID(s.uuid) ===
-              BATTERY_SERVICE
-          )
-        ) {
-
-          await readBattery(
-            deviceId
-          )
-
-        }
-
-
-        // ------------------------------------------------------
-        // DEVICE INFORMATION
-        // ------------------------------------------------------
-
-        const infoService =
-          discovered.find(
-            s =>
-              normalizeUUID(s.uuid) ===
-              DEVICE_INFORMATION_SERVICE
-          )
-
-
-        if (infoService) {
-
-          await readDeviceInformation(
-            deviceId,
-            infoService
-          )
-
-        }
-
-
-        // ------------------------------------------------------
-        // STANDARD HR
-        // ------------------------------------------------------
-
-        await startStandardHeartRate(
-          deviceId,
-          discovered
-        )
-
-
-        // ------------------------------------------------------
-        // HIWATCH NUS
-        // ------------------------------------------------------
-
-        const nus =
-          discovered.find(
-            s =>
-              normalizeUUID(s.uuid) ===
-              HIWATCH_UART_SERVICE
-          )
-
-
-        if (nus) {
-
-          addLog(
-            '⌚ NUS service found.'
-          )
-
-
-          const rx =
-            nus.characteristics?.find(
-              c =>
-                normalizeUUID(c.uuid) ===
-                HIWATCH_UART_RX
-            )
-
-
-          if (rx) {
-
-            addLog(
-              '⌚ NUS RX characteristic found.'
-            )
-
-
-            await startHiWatchHealthListener(
-              deviceId
-            )
-
-          } else {
-
-            addLog(
-              'NUS RX characteristic missing.'
-            )
-
-          }
-
-        }
-
-
-        // ------------------------------------------------------
-        // CUSTOM FFFF
-        // ------------------------------------------------------
-
-        const ffff =
-          discovered.find(
-            s =>
-              normalizeUUID(s.uuid) ===
-              CUSTOM_FFFF_SERVICE
-          )
-
-
-        if (ffff) {
-
-          addLog(
-            '🔧 FFFF custom service found.'
-          )
-
-        }
-
-
-        // ------------------------------------------------------
-        // CUSTOM 3802
-        // ------------------------------------------------------
-
-        const custom3802 =
-          discovered.find(
-            s =>
-              normalizeUUID(s.uuid) ===
-              CUSTOM_3802_SERVICE
-          )
-
-
-        if (custom3802) {
-
-          addLog(
-            '🔧 3802 custom service found.'
-          )
-
-        }
-
-
-        return discovered
-
-      } catch (err) {
-
-        console.error(err)
-
-        addLog(
-          `Service discovery failed: ${err.message}`
-        )
-
-        return []
-
-      }
-
-    }
-
-
-  // ==========================================================
-  // CONNECT
-  // ==========================================================
-
-  const connectDevice = async device => {
-
-    try {
-
-      setStatus(
-        `Connecting to ${
-          device.name ||
-          device.localName ||
-          device.deviceId
-        }...`
-      )
-
-
-      addLog(
-        `Connecting to ${device.deviceId}...`
-      )
-
-
-      await BleClient.connect(
-
-        device.deviceId,
-
-        () => {
-
-          addLog(
-            '⌚ Watch disconnected.'
-          )
-
-
-          connectedRef.current =
-            null
-
-          setConnectedDevice(null)
-
-          setActiveListeners([])
-
-        }
-
-      )
-
-
-      connectedRef.current =
-        device
-
-
-      setConnectedDevice(
-        device
-      )
-
-
-      setStatus(
-        'Connected.'
-      )
-
-
-      addLog(
-        '⌚ Watch connected.'
-      )
-
-
-      setPackets([])
-
-      setHeartRate(null)
-
-      setWatchHeartRate(null)
-
-      setWatchSpo2(null)
-
-      setWatchBloodPressure(null)
-
-
-      healthRef.current = {
-
-        heartRate: null,
-
-        spo2: null,
-
-        bloodPressure: null
-
-      }
-
-
-      await discoverServices(
-        device.deviceId
-      )
-
-
-    } catch (err) {
-
-      console.error(err)
-
-      setStatus(
-        `Connection failed: ${err.message}`
-      )
-
-
-      addLog(
-        `Connection failed: ${err.message}`
-      )
-
-    }
-
-  }
-
-
-  // ==========================================================
-  // DISCONNECT
-  // ==========================================================
-
-  const disconnect = async () => {
-
-    const device =
-      connectedRef.current ||
-      connectedDevice
-
-
-    if (!device)
-      return
-
-
-    try {
-
-      try {
-
-        await BleClient.stopNotifications(
-
-          device.deviceId,
-
-          HIWATCH_UART_SERVICE,
-
-          HIWATCH_UART_RX
-
-        )
-
-      } catch {}
-
-
-      try {
-
-        await BleClient.stopNotifications(
-
-          device.deviceId,
-
-          HEART_RATE_SERVICE,
-
-          HEART_RATE_CHARACTERISTIC
-
-        )
-
-      } catch {}
-
-
-      await BleClient.disconnect(
-        device.deviceId
-      )
-
-
-      connectedRef.current =
-        null
-
-
-      setConnectedDevice(null)
-
-      setServices([])
-
-      setServiceSummary([])
-
-      setActiveListeners([])
-
-      setBatteryLevel(null)
-
-      setHeartRate(null)
-
-      setWatchHeartRate(null)
-
-      setWatchSpo2(null)
-
-      setWatchBloodPressure(null)
-
-      setDeviceInformation([])
-
-
-      addLog(
-        'Disconnected.'
-      )
-
-    } catch (err) {
-
-      addLog(
-        `Disconnect error: ${err.message}`
-      )
-
-    }
-
-  }
-
-
-  // ==========================================================
-  // CLEAR PACKETS
-  // ==========================================================
-
-  const clearPackets = () => {
-
-    setPackets([])
-
-    addLog(
-      'Packet capture cleared.'
-    )
-
-  }
-
-
-  // ==========================================================
-  // EXPORT
-  // ==========================================================
-
-  const exportPackets = () => {
-
-    const data =
-      JSON.stringify(
-        packets,
-        null,
-        2
-      )
-
-
-    const blob =
-      new Blob(
-        [data],
-        {
-          type:
-            'application/json'
-        }
-      )
-
-
-    const url =
-      URL.createObjectURL(
-        blob
-      )
-
-
-    const a =
-      document.createElement(
-        'a'
-      )
-
-
-    a.href =
-      url
-
-    a.download =
-      `hiwatch-packets-${Date.now()}.json`
-
-    a.click()
-
-    URL.revokeObjectURL(
-      url
-    )
-
-  }
-
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
+    .join(" ");
 
   return (
-
-    <div className="max-w-7xl mx-auto p-4 text-black">
-
-      {/* =====================================================
-          HEADER
-      ====================================================== */}
-
-      <div className="mb-6">
-
-        <h1 className="text-3xl font-bold">
-
-          T900 / HiWatch BLE Analyzer
-
-        </h1>
-
-        <p className="text-gray-600 mt-1">
-
-          NUS health-data packet capture and analysis
-
-        </p>
-
-      </div>
-
-
-      {/* =====================================================
-          STATUS
-      ====================================================== */}
-
-      <div className="border rounded p-4 mb-6 bg-gray-50">
-
-        <div>
-
-          BLE:
-          {' '}
-
-          <strong>
-
-            {initialized
-              ? 'Initialized'
-              : 'Not initialized'}
-
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          Status:
-          {' '}
-
-          <strong>
-
-            {status || 'Idle'}
-
-          </strong>
-
-        </div>
-
-
-        {connectedDevice && (
-
-          <div className="mt-2">
-
-            Connected:
-            {' '}
-
-            <strong>
-
-              {connectedDevice.name ||
-                connectedDevice.localName ||
-                connectedDevice.deviceId}
-
-            </strong>
-
-          </div>
-
-        )}
-
-      </div>
-
-
-      {/* =====================================================
-          SCAN
-      ====================================================== */}
-
-      <div className="flex gap-2 mb-6">
-
-        {!scanning ? (
-
-          <button
-            onClick={startScan}
-            disabled={!initialized}
-            className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
-          >
-
-            Scan
-
-          </button>
-
-        ) : (
-
-          <button
-            onClick={stopScan}
-            className="bg-red-600 text-white px-4 py-2 rounded"
-          >
-
-            Stop Scan
-
-          </button>
-
-        )}
-
-      </div>
-
-
-      {/* =====================================================
-          DEVICES
-      ====================================================== */}
-
-      <section className="mb-8">
-
-        <h2 className="text-xl font-bold mb-3">
-
-          Devices ({devices.length})
-
-        </h2>
-
-
-        <div className="space-y-2">
-
-          {devices.map(device => (
-
-            <div
-              key={device.deviceId}
-              className="border rounded p-4 flex justify-between items-center"
-            >
-
-              <div>
-
-                <div className="font-bold">
-
-                  {device.name ||
-                    device.localName ||
-                    'Unnamed Device'}
-
-                </div>
-
-
-                <div className="font-mono text-xs">
-
-                  {device.deviceId}
-
-                </div>
-
-
-                <div className="text-sm">
-
-                  RSSI:
-                  {' '}
-                  {device.rssi}
-
-                </div>
-
-              </div>
-
-
-              {connectedDevice?.deviceId ===
-              device.deviceId ? (
-
-                <span className="text-green-600 font-bold">
-
-                  Connected
-
-                </span>
-
-              ) : (
-
-                <button
-                  onClick={() =>
-                    connectDevice(device)
-                  }
-                  className="bg-green-600 text-white px-4 py-2 rounded"
-                >
-
-                  Connect
-
-                </button>
-
-              )}
-
-            </div>
-
-          ))}
-
-        </div>
-
-      </section>
-
-
-      {/* =====================================================
-          HUMAN READABLE HEALTH DASHBOARD
-      ====================================================== */}
-
-      {connectedDevice && (
-
-        <section className="mb-8">
-
-          <h2 className="text-xl font-bold mb-3">
-
-            ❤️ Watch Health
-
-          </h2>
-
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-
-            {/* HEART RATE */}
-
-            <div className="border rounded p-4 bg-red-50">
-
-              <div className="text-gray-600">
-
-                ❤️ Watch HR
-
-              </div>
-
-              <div className="text-3xl font-bold">
-
-                {watchHeartRate !== null
-                  ? `${watchHeartRate} BPM`
-                  : '--'}
-
-              </div>
-
-              <div className="text-xs text-gray-500 mt-2">
-
-                HiWatch NUS
-
-              </div>
-
-            </div>
-
-
-            {/* SPO2 */}
-
-            <div className="border rounded p-4 bg-blue-50">
-
-              <div className="text-gray-600">
-
-                🫁 Watch SpO₂
-
-              </div>
-
-              <div className="text-3xl font-bold">
-
-                {watchSpo2 !== null
-                  ? `${watchSpo2}%`
-                  : '--'}
-
-              </div>
-
-              <div className="text-xs text-gray-500 mt-2">
-
-                HiWatch NUS
-
-              </div>
-
-            </div>
-
-
-            {/* BP */}
-
-            <div className="border rounded p-4 bg-purple-50">
-
-              <div className="text-gray-600">
-
-                🩸 Watch BP
-
-              </div>
-
-              <div className="text-3xl font-bold">
-
-                {watchBloodPressure ||
-                  '--'}
-
-              </div>
-
-              <div className="text-xs text-gray-500 mt-2">
-
-                HiWatch NUS
-
-              </div>
-
-            </div>
-
-
-            {/* BATTERY */}
-
-            <div className="border rounded p-4 bg-green-50">
-
-              <div className="text-gray-600">
-
-                🔋 Battery
-
-              </div>
-
-              <div className="text-3xl font-bold">
-
-                {batteryLevel !== null
-                  ? `${batteryLevel}%`
-                  : '--'}
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div className="mt-4">
-
-            <button
-              onClick={disconnect}
-              className="bg-gray-700 text-white px-4 py-2 rounded"
-            >
-
-              Disconnect
-
-            </button>
-
-          </div>
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          READABLE HEALTH TABLE
-      ====================================================== */}
-
-      {packets.length > 0 && (
-
-        <section className="mb-8">
-
-          <h2 className="text-xl font-bold mb-3">
-
-            📊 Watch Health Readings
-
-          </h2>
-
-
-          <div className="overflow-x-auto border rounded">
-
-            <table className="min-w-full text-sm">
-
-              <thead className="bg-gray-100">
-
-                <tr>
-
-                  <th className="p-3 text-left">
-                    Packet
-                  </th>
-
-                  <th className="p-3 text-left">
-                    Time
-                  </th>
-
-                  <th className="p-3 text-left">
-                    ❤️ Watch HR
-                  </th>
-
-                  <th className="p-3 text-left">
-                    🫁 Watch SpO₂
-                  </th>
-
-                  <th className="p-3 text-left">
-                    🩸 Watch BP
-                  </th>
-
-                  <th className="p-3 text-left">
-                    HEX
-                  </th>
-
-                </tr>
-
-              </thead>
-
-
-              <tbody>
-
-                {packets
-                  .slice()
-                  .reverse()
-                  .map(
-                    (packet, index) => {
-
-                      const displayedHealth =
-                        packet.health || {}
-
-
-                      return (
-
-                        <tr
-                          key={packet.id}
-                          className="border-t hover:bg-gray-50"
-                        >
-
-                          <td className="p-3 font-bold">
-
-                            {packets.length -
-                              index}
-
-                          </td>
-
-
-                          <td className="p-3">
-
-                            {packet.time}
-
-                          </td>
-
-
-                          <td className="p-3 font-bold">
-
-                            {displayedHealth
-                              .displayedHeartRate !== null &&
-                            displayedHealth
-                              .displayedHeartRate !== undefined
-
-                              ? `${displayedHealth.displayedHeartRate} BPM`
-
-                              : '--'}
-
-                          </td>
-
-
-                          <td className="p-3 font-bold">
-
-                            {displayedHealth
-                              .displayedSpO2 !== null &&
-                            displayedHealth
-                              .displayedSpO2 !== undefined
-
-                              ? `${displayedHealth.displayedSpO2}%`
-
-                              : '--'}
-
-                          </td>
-
-
-                          <td className="p-3 font-bold">
-
-                            {displayedHealth
-                              .displayedBloodPressure ||
-                              '--'}
-
-                          </td>
-
-
-                          <td className="p-3">
-
-                            <div
-                              className="font-mono text-xs whitespace-nowrap max-w-md overflow-x-auto"
-                            >
-
-                              {packet.hex}
-
-                            </div>
-
-                          </td>
-
-                        </tr>
-
-                      )
-
-                    }
-                  )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          GATT SERVICES
-      ====================================================== */}
-
-      {serviceSummary.length > 0 && (
-
-        <section className="mb-8">
-
-          <h2 className="text-xl font-bold mb-3">
-
-            GATT Services
-
-          </h2>
-
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-            {serviceSummary.map(
-              (service, index) => (
-
-                <div
-                  key={index}
-                  className="border rounded p-4"
-                >
-
-                  <div className="font-bold">
-
-                    {service.name}
-
-                  </div>
-
-
-                  <div className="font-mono text-xs break-all mt-1">
-
-                    {service.uuid}
-
-                  </div>
-
-
-                  <div className="text-sm mt-2">
-
-                    Characteristics:
-                    {' '}
-                    {service.characteristicCount}
-
-                  </div>
-
-
-                  <div className="text-xs text-gray-600">
-
-                    Read: {service.read}
-                    {' | '}
-                    Write: {service.write}
-                    {' | '}
-                    Notify: {service.notify}
-
-                  </div>
-
-                </div>
-
-              )
-            )}
-
-          </div>
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          DEVICE INFORMATION
-      ====================================================== */}
-
-      {deviceInformation.length > 0 && (
-
-        <section className="mb-8">
-
-          <h2 className="text-xl font-bold mb-3">
-
-            Device Information
-
-          </h2>
-
-
-          <div className="border rounded p-4">
-
-            {deviceInformation.map(
-              (item, index) => (
-
-                <div
-                  key={index}
-                  className="border-b last:border-b-0 py-2"
-                >
-
-                  <div className="font-mono text-xs">
-
-                    {item.uuid}
-
-                  </div>
-
-
-                  <div>
-
-                    {item.text ||
-                      '(binary)'}
-
-                  </div>
-
-
-                  <div className="font-mono text-xs">
-
-                    {item.hex}
-
-                  </div>
-
-                </div>
-
-              )
-            )}
-
-          </div>
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          ACTIVE LISTENERS
-      ====================================================== */}
-
-      {activeListeners.length > 0 && (
-
-        <section className="mb-8">
-
-          <h2 className="text-xl font-bold mb-3">
-
-            Active Listeners
-
-          </h2>
-
-
-          {activeListeners.map(
-            (listener, index) => (
-
-              <div
-                key={index}
-                className="border rounded p-3 mb-2 bg-green-50"
-              >
-
-                <div className="font-bold">
-
-                  {listener.type}
-
-                </div>
-
-
-                <div className="font-mono text-xs break-all">
-
-                  Service:
-                  {' '}
-                  {listener.serviceUUID}
-
-                </div>
-
-
-                <div className="font-mono text-xs break-all">
-
-                  Characteristic:
-                  {' '}
-                  {listener.characteristicUUID}
-
-                </div>
-
-              </div>
-
-            )
-          )}
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          CAPTURE CONTROLS
-      ====================================================== */}
-
-      {connectedDevice && (
-
-        <section className="mb-8">
-
-          <div className="flex flex-wrap gap-2">
-
-            <button
-              onClick={() =>
-                setCapturing(
-                  prev => !prev
-                )
-              }
-              className={
-                capturing
-                  ? 'bg-green-600 text-white px-4 py-2 rounded'
-                  : 'bg-gray-600 text-white px-4 py-2 rounded'
-              }
-            >
-
-              {capturing
-                ? '● Capturing NUS'
-                : '○ Capture Paused'}
-
-            </button>
-
-
-            <button
-              onClick={clearPackets}
-              className="bg-red-600 text-white px-4 py-2 rounded"
-            >
-
-              Clear Packets
-
-            </button>
-
-
-            <button
-              onClick={exportPackets}
-              disabled={
-                packets.length === 0
-              }
-              className="bg-purple-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
-            >
-
-              Export JSON
-
-            </button>
-
-
-            <button
-              onClick={() =>
-                setShowByteAnalysis(
-                  prev => !prev
-                )
-              }
-              className="bg-orange-600 text-white px-4 py-2 rounded"
-            >
-
-              {showByteAnalysis
-                ? 'Hide Byte Analysis'
-                : 'Show Byte Analysis'}
-
-            </button>
-
-          </div>
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          PACKET TABLE
-      ====================================================== */}
-
-      {packets.length > 0 && (
-
-        <section className="mb-8">
-
-          <h2 className="text-xl font-bold mb-3">
-
-            Raw HiWatch NUS Packets
-
-          </h2>
-
-
-          <div className="overflow-x-auto border rounded">
-
-            <table className="min-w-full text-xs">
-
-              <thead className="bg-gray-100">
-
-                <tr>
-
-                  <th className="p-2 text-left">
-                    #
-                  </th>
-
-                  <th className="p-2 text-left">
-                    Time
-                  </th>
-
-                  <th className="p-2 text-left">
-                    Len
-                  </th>
-
-                  <th className="p-2 text-left">
-                    Header
-                  </th>
-
-                  <th className="p-2 text-left">
-                    Cmd
-                  </th>
-
-                  <th className="p-2 text-left">
-                    Sub
-                  </th>
-
-                  <th className="p-2 text-left">
-                    HEX
-                  </th>
-
-                </tr>
-
-              </thead>
-
-
-              <tbody>
-
-                {packets
-                  .slice()
-                  .reverse()
-                  .map(
-                    (packet, index) => (
-
-                      <tr
-                        key={packet.id}
-                        className="border-t"
-                      >
-
-                        <td className="p-2">
-
-                          {packets.length -
-                            index}
-
-                        </td>
-
-
-                        <td className="p-2">
-
-                          {packet.time}
-
-                        </td>
-
-
-                        <td className="p-2">
-
-                          {packet.length}
-
-                        </td>
-
-
-                        <td className="p-2 font-mono">
-
-                          {hexByte(
-                            packet.firstByte
-                          )}
-
-                        </td>
-
-
-                        <td className="p-2 font-mono">
-
-                          {hexByte(
-                            packet.command
-                          )}
-
-                        </td>
-
-
-                        <td className="p-2 font-mono">
-
-                          {hexByte(
-                            packet.subCommand
-                          )}
-
-                        </td>
-
-
-                        <td className="p-2 font-mono whitespace-nowrap">
-
-                          {packet.hex}
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </section>
-
-      )}
-
-
-      {/* =====================================================
-          BYTE ANALYSIS
-      ====================================================== */}
-
-      {showByteAnalysis &&
-        packets.length > 0 && (
-
-          <section className="mb-8">
-
-            <h2 className="text-xl font-bold mb-3">
-
-              Byte-Level Analysis
-
-            </h2>
-
-
-            {packets
-              .slice()
-              .reverse()
-              .map(
-                (packet, packetIndex) => (
-
-                  <div
-                    key={packet.id}
-                    className="border rounded p-4 mb-4"
-                  >
-
-                    <div className="flex justify-between">
-
-                      <strong>
-
-                        Packet #
-                        {' '}
-                        {packets.length -
-                          packetIndex}
-
-                      </strong>
-
-
-                      <span>
-
-                        {packet.time}
-
-                      </span>
-
-                    </div>
-
-
-                    <div className="font-mono text-xs mt-2 break-all">
-
-                      {packet.hex}
-
-                    </div>
-
-
-                    <div className="overflow-x-auto mt-4">
-
-                      <table className="text-xs">
-
-                        <thead>
-
-                          <tr>
-
-                            <th className="p-2">
-                              Index
-                            </th>
-
-                            {packet.bytes.map(
-                              (_, index) => (
-
-                                <th
-                                  key={index}
-                                  className="p-2"
-                                >
-
-                                  {index}
-
-                                </th>
-
-                              )
-                            )}
-
-                          </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                          <tr>
-
-                            <td className="p-2 font-bold">
-
-                              HEX
-
-                            </td>
-
-
-                            {packet.bytes.map(
-                              (byte, index) => (
-
-                                <td
-                                  key={index}
-                                  className="p-2 font-mono"
-                                >
-
-                                  {hexByte(
-                                    byte
-                                  )}
-
-                                </td>
-
-                              )
-                            )}
-
-                          </tr>
-
-
-                          <tr>
-
-                            <td className="p-2 font-bold">
-
-                              DEC
-
-                            </td>
-
-
-                            {packet.bytes.map(
-                              (byte, index) => (
-
-                                <td
-                                  key={index}
-                                  className="p-2"
-                                >
-
-                                  {byte}
-
-                                </td>
-
-                              )
-                            )}
-
-                          </tr>
-
-                        </tbody>
-
-                      </table>
-
-                    </div>
-
-
-                    <div className="mt-4">
-
-                      <div className="font-bold">
-
-                        16-bit Little Endian
-
-                      </div>
-
-
-                      <div className="font-mono text-xs mt-1">
-
-                        {packet.uint16LE
-                          .map(
-                            item =>
-                              `[${item.offset}] = ${item.value}`
-                          )
-                          .join('   ')}
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="mt-4">
-
-                      <div className="font-bold">
-
-                        16-bit Big Endian
-
-                      </div>
-
-
-                      <div className="font-mono text-xs mt-1">
-
-                        {packet.uint16BE
-                          .map(
-                            item =>
-                              `[${item.offset}] = ${item.value}`
-                          )
-                          .join('   ')}
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="mt-4 bg-yellow-50 rounded p-3">
-
-                      <div className="font-bold">
-
-                        Potential Health Values
-
-                      </div>
-
-
-                      <div className="text-xs mt-2">
-
-                        ❤️ HR candidates:
-
-                        {' '}
-
-                        {packet.health
-                          ?.possibleHeartRate
-                          ?.map(
-                            x =>
-                              `[${x.index}] ${x.value}`
-                          )
-                          .join(', ') ||
-                          'none'}
-
-                      </div>
-
-
-                      <div className="text-xs mt-2">
-
-                        🫁 SpO₂ candidates:
-
-                        {' '}
-
-                        {packet.health
-                          ?.possibleSpO2
-                          ?.map(
-                            x =>
-                              `[${x.index}] ${x.value}`
-                          )
-                          .join(', ') ||
-                          'none'}
-
-                      </div>
-
-
-                      <div className="text-xs mt-2">
-
-                        🩸 BP candidates:
-
-                        {' '}
-
-                        {packet.health
-                          ?.possibleBloodPressure
-                          ?.map(
-                            x =>
-                              `[${x.index}] ${x.value}`
-                          )
-                          .join(', ') ||
-                          'none'}
-
-                      </div>
-
-
-                      <div className="text-xs mt-2">
-
-                        16-bit candidates:
-
-                        {' '}
-
-                        {packet.health
-                          ?.possible16BitValues
-                          ?.map(
-                            x =>
-                              `[${x.offset}] ${x.value}`
-                          )
-                          .join(', ') ||
-                          'none'}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                )
-              )}
-
-          </section>
-
-        )}
-
-
-      {/* =====================================================
-          LOGS
-      ====================================================== */}
-
-      <section>
-
-        <h2 className="text-xl font-bold mb-3">
-
-          Logs
-
-        </h2>
-
-
-        <div className="bg-black text-green-400 rounded p-4 max-h-96 overflow-y-auto font-mono text-xs">
-
-          {logs.map(
-            (log, index) => (
-
-              <div key={index}>
-
-                {log}
-
-              </div>
-
-            )
-          )}
-
-        </div>
-
-      </section>
-
+    <div className="w-full h-32 bg-gray-50 rounded-lg p-2">
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          className="drop-shadow-sm"
+        />
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </div>
+  );
+};
 
-  )
+// ─── LANGUAGE SELECTOR ─────────────────────────────────────────────────────────
+const LanguageSelector = ({ language, setLanguage, t }) => {
+  return (
+    <div className="relative group">
+      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg flex items-center space-x-1">
+        <Globe className="w-5 h-5" />
+        <span className="text-xs">{language === "pt" ? "PT" : "EN"}</span>
+      </button>
+      <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+        <button
+          onClick={() => setLanguage("pt")}
+          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-t-lg ${language === "pt" ? "text-blue-500 bg-blue-50" : "text-gray-700"}`}
+        >
+          {t.portuguese}
+        </button>
+        <button
+          onClick={() => setLanguage("en")}
+          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-b-lg ${language === "en" ? "text-blue-500 bg-blue-50" : "text-gray-700"}`}
+        >
+          {t.english}
+        </button>
+      </div>
+    </div>
+  );
+};
 
+// ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
+const LoginPage = ({ onLogin, onNavigate, language, setLanguage }) => {
+  const t = translations[language];
+  const [selectedRole, setSelectedRole] = useState("patient");
+  const [email, setEmail] = useState("john.smith@email.com");
+  const [password, setPassword] = useState("patient123");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const testCredentials = {
+    patient: { email: "john.smith@email.com", password: "patient123" },
+    doctor: { email: "sarah.johnson@hospital.com", password: "doctor123" },
+    admin: { email: "admin@healthsystem.com", password: "admin123" }
+  };
+
+  const handleRoleSelect = (role) => {
+    setSelectedRole(role);
+    setEmail(testCredentials[role].email);
+    setPassword(testCredentials[role].password);
+    setError("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const { data } = await client.post("/auth/login", {
+        email,
+        password,
+      });
+
+      const { user, token, refreshToken } = data;
+
+      if (!user || !token) {
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      setStoredToken(token);
+      if (refreshToken) {
+        setStoredRefreshToken(refreshToken);
+      }
+
+      onLogin(user);
+    } catch (err) {
+      setError(err.response?.data?.message || "Email ou senha inválidos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-6 overflow-y-auto">
+      <div className="flex justify-end mb-2">
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+      <div className="text-center mb-6">
+        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
+          <Heart className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-800">{t.appName}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t.subtitle}</p>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t.email}
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            placeholder="seu@email.com"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t.password}
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {["patient", "doctor", "admin"].map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => handleRoleSelect(role)}
+              className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                selectedRole === role
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {role === "patient" && t.patient}
+              {role === "doctor" && t.doctor}
+              {role === "admin" && t.admin}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors mt-6 disabled:bg-blue-300 disabled:cursor-not-allowed"
+        >
+          {loading ? "A entrar..." : t.signIn}
+        </button>
+
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={() => onNavigate("register")}
+            className="text-sm text-blue-500 hover:text-blue-600"
+          >
+            {t.noAccount} {t.register}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+
+// ─── PATIENT DASHBOARD ─────────────────────────────────────────────────────────
+const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
+  const t = translations[language];
+  const [currentHydration, setCurrentHydration] = useState(65);
+  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+  const [history, setHistory] = useState(generateHydrationHistory(user.id));
+
+  // Update notifications when language changes
+  useEffect(() => {
+    setNotifications(generateMockNotifications(language));
+  }, [language]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const change = (Math.random() - 0.5) * 5;
+      setCurrentHydration((prev) => {
+        const newLevel = Math.round(Math.max(30, Math.min(95, prev + change)));
+        setHistory((h) => [
+          ...h.slice(1),
+          { time: new Date().toISOString(), level: newLevel, intake: Math.floor(1500 + Math.random() * 1000) },
+        ]);
+        return newLevel;
+      });
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const status = currentHydration < 50 ? "low" : currentHydration > 80 ? "high" : "normal";
+  const statusColor = status === "low" ? "text-red-500" : status === "high" ? "text-amber-500" : "text-green-500";
+  const statusText = status === "low" ? t.low : status === "high" ? t.high : t.normal;
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm p-4 flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full" />
+          <div>
+            <h2 className="font-semibold text-gray-800">{user.name}</h2>
+            <p className="text-xs text-gray-500">{t.patient}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3">
+          <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+          <button
+            onClick={() => onNavigate("notifications")}
+            className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Bell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button onClick={onLogout} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-4 overflow-y-auto">
+        {/* Hydration Card */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">{t.currentHydration}</h3>
+            <Droplet className={`w-6 h-6 ${statusColor}`} />
+          </div>
+          <div className="flex items-center justify-center my-6">
+            <div className="relative w-32 h-32">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="#e5e7eb"
+                  strokeWidth="8"
+                  fill="none"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke={status === "low" ? "#ef4444" : status === "high" ? "#f59e0b" : "#10b981"}
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${Math.round(currentHydration) * 2.51} 251`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-3xl font-bold text-gray-800">{Math.round(currentHydration)}%</span>
+          </div>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className={`text-sm font-medium ${statusColor} capitalize`}>{statusText} {t.hydrationLevel?.toLowerCase() || ""}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {t.dailyIntake}: 1,800ml / {user.hydrationTarget}ml
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.todaysIntake}</p>
+            <p className="text-xl font-bold text-gray-800">1.8L</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.lastReading}</p>
+            <p className="text-xl font-bold text-gray-800">10:30 AM</p>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sevenDayHistory}</h3>
+          <SimpleChart data={history} color="#3b82f6" />
+        </div>
+
+        {/* Recent Alerts */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.recentAlerts}</h3>
+          <div className="space-y-2">
+            {notifications.slice(0, 3).map((n) => (
+              <div key={n.id} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-800">{n.title}</p>
+                  <p className="text-xs text-gray-500">{n.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bg-white border-t border-gray-200 p-4 flex justify-around">
+        <button className="flex flex-col items-center text-blue-500">
+          <Activity className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.dashboard}</span>
+        </button>
+        <button
+          onClick={() => onNavigate("history")}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <BarChart3 className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.history}</span>
+        </button>
+        <button
+          onClick={() => onNavigate("settings")}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <Settings className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.settings}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── DOCTOR DASHBOARD ──────────────────────────────────────────────────────────
+const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
+  const t = translations[language];
+  const [patients, setPatients] = useState(mockPatients);
+  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+
+  useEffect(() => {
+    setNotifications(generateMockNotifications(language));
+  }, [language]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPatients((prev) =>
+        prev.map((p) => ({
+          ...p,
+          hydrationLevel: Math.round(Math.max(30, Math.min(95, p.hydrationLevel + (Math.random() - 0.5) * 8))),
+          lastReading: new Date().toISOString(),
+        }))
+      );
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const alertPatients = patients.filter((p) => p.status !== "normal");
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm p-4 flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full" />
+          <div>
+            <h2 className="font-semibold text-gray-800">{user.name}</h2>
+            <p className="text-xs text-gray-500">{user.specialization}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3">
+          <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+          <button
+            onClick={() => onNavigate("notifications")}
+            className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Bell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button onClick={onLogout} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-4 overflow-y-auto">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.totalPatients}</p>
+            <p className="text-2xl font-bold text-gray-800">{patients.length}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.alerts}</p>
+            <p className="text-2xl font-bold text-red-500">{alertPatients.length}</p>
+          </div>
+        </div>
+
+        {/* Alert Patients */}
+        {alertPatients.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+              <AlertTriangle className="w-4 h-4 text-red-500 mr-2" />
+              {t.patientsNeedingAttention}
+            </h3>
+            <div className="space-y-3">
+              {alertPatients.map((p) => (
+                <div key={p.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{p.name}</p>
+                      <p className="text-xs text-gray-500">{t.currentHydration}: {p.hydrationLevel}%</p>
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    p.status === "low" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
+                  }`}>
+                    {p.status === "low" ? t.low : t.high}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All Patients */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.allPatients}</h3>
+          <div className="space-y-3">
+            {patients.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => onNavigate("patient-detail", p.id)}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+              >
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={`https://i.pravatar.cc/150?img=${p.id === "p1" ? 1 : p.id === "p2" ? 5 : 8}`}
+                    alt={p.name}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{p.name}</p>
+                    <p className="text-xs text-gray-500">Age: {p.age}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-gray-800">{Math.round(p.hydrationLevel)}%</p>
+                  <p className="text-xs text-gray-500">
+                    {p.hydrationLevel < 50 ? "↓" : p.hydrationLevel > 80 ? "↑" : "→"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bg-white border-t border-gray-200 p-4 flex justify-around">
+        <button className="flex flex-col items-center text-blue-500">
+          <Stethoscope className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.patients}</span>
+        </button>
+        <button
+          onClick={() => onNavigate("analytics")}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <BarChart3 className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.analytics}</span>
+        </button>
+        <button
+          onClick={() => onNavigate("settings")}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <Settings className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.settings}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
+  const t = translations[language];
+  const [stats] = useState({
+    totalUsers: 156,
+    totalDoctors: 24,
+    totalPatients: 132,
+    activeAlerts: 8,
+    systemStatus: "operational",
+  });
+
+  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+
+  useEffect(() => {
+    setNotifications(generateMockNotifications(language));
+  }, [language]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm p-4 flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+            <Shield className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">{user.name}</h2>
+            <p className="text-xs text-gray-500">{t.administrator}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3">
+          <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+          <button
+            onClick={() => onNavigate("notifications")}
+            className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Bell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button onClick={onLogout} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-4 overflow-y-auto">
+        {/* System Stats */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.totalUsers}</p>
+            <p className="text-2xl font-bold text-gray-800">{stats.totalUsers}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.alerts}</p>
+            <p className="text-2xl font-bold text-red-500">{stats.activeAlerts}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.doctor}</p>
+            <p className="text-2xl font-bold text-gray-800">{stats.totalDoctors}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.patients}</p>
+            <p className="text-2xl font-bold text-gray-800">{stats.totalPatients}</p>
+          </div>
+        </div>
+
+        {/* System Status */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.systemStatus}</h3>
+          <div className="flex items-center space-x-3">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-gray-800 capitalize">{stats.systemStatus === "operational" ? t.operational : stats.systemStatus}</span>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.quickActions}</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => onNavigate("users")}
+              className="p-3 bg-blue-50 rounded-lg flex flex-col items-center"
+            >
+              <Users className="w-6 h-6 text-blue-500 mb-1" />
+              <span className="text-xs font-medium text-gray-700">{t.manageUsers}</span>
+            </button>
+            <button
+              onClick={() => onNavigate("analytics")}
+              className="p-3 bg-purple-50 rounded-lg flex flex-col items-center"
+            >
+              <PieChart className="w-6 h-6 text-purple-500 mb-1" />
+              <span className="text-xs font-medium text-gray-700">{t.viewAnalytics}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Recent Alerts */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.systemAlerts}</h3>
+          <div className="space-y-2">
+            {notifications.slice(0, 4).map((n) => (
+              <div key={n.id} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-800">{n.title}</p>
+                  <p className="text-xs text-gray-500">{n.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bg-white border-t border-gray-200 p-4 flex justify-around">
+        <button className="flex flex-col items-center text-blue-500">
+          <Shield className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.overview}</span>
+        </button>
+        <button
+          onClick={() => onNavigate("users")}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <Users className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.users}</span>
+        </button>
+        <button
+          onClick={() => onNavigate("settings")}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <Settings className="w-6 h-6" />
+          <span className="text-xs mt-1">{t.settings}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── NOTIFICATIONS PAGE ────────────────────────────────────────────────────────
+const NotificationsPage = ({ user, onBack, language, setLanguage }) => {
+  const t = translations[language];
+  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+
+  useEffect(() => {
+    setNotifications(generateMockNotifications(language));
+  }, [language]);
+
+  const markAsRead = (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.notifications}</h2>
+        </div>
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        <div className="space-y-3">
+          {notifications.map((n) => (
+            <div
+              key={n.id}
+              onClick={() => markAsRead(n.id)}
+              className={`p-4 rounded-xl shadow-sm cursor-pointer transition-all ${
+                n.read ? "bg-white" : "bg-blue-50 border-l-4 border-blue-500"
+              }`}
+            >
+              <div className="flex items-start space-x-3">
+                <div className={`p-2 rounded-lg ${
+                  n.priority === "high" ? "bg-red-100" : "bg-gray-100"
+                }`}>
+                  <AlertTriangle className={`w-4 h-4 ${
+                    n.priority === "high" ? "text-red-500" : "text-gray-500"
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-gray-800">{n.title}</h4>
+                  <p className="text-xs text-gray-600 mt-1">{n.message}</p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {new Date(n.time).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── HISTORY PAGE ───────────────────────────────────────────────────────────────
+const HistoryPage = ({ user, onBack, language, setLanguage }) => {
+  const t = translations[language];
+  const [history] = useState(generateHydrationHistory(user.id, 14));
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.hydrationHistory}</h2>
+        </div>
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.fourteenDayTrend}</h3>
+          <SimpleChart data={history} color="#3b82f6" />
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.dailyRecords}</h3>
+          <div className="space-y-2">
+            {history
+              .filter((_, i) => i % 4 === 0)
+              .slice(0, 7)
+              .map((h, i) => (
+                <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                  <span className="text-sm text-gray-600">
+                    {new Date(h.time).toLocaleDateString()}
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-800">{h.level.toFixed(0)}%</span>
+                    <Droplet className="w-4 h-4 text-blue-500" />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── PATIENT DETAIL PAGE ───────────────────────────────────────────────────────
+const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
+  const t = translations[language];
+  const patient = mockPatients.find((p) => p.id === patientId);
+  const history = generateHydrationHistory(patientId, 30);
+  const patientNotifications = generateMockNotifications(language).filter((n) => n.patientId === patientId);
+
+  if (!patient) return null;
+
+  const avgHydration = Math.round(history.reduce((sum, h) => sum + h.level, 0) / history.length);
+  const minHydration = Math.min(...history.map((h) => h.level));
+  const maxHydration = Math.max(...history.map((h) => h.level));
+  const statusColor = patient.status === "low" ? "text-red-500" : patient.status === "high" ? "text-amber-500" : "text-green-500";
+  const statusText = patient.status === "low" ? t.low : patient.status === "high" ? t.high : t.normal;
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.patientDetails}</h2>
+        </div>
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        {/* Patient Profile */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <div className="flex items-center space-x-4 mb-4">
+            <img
+              src={`https://i.pravatar.cc/150?img=${patientId === "p1" ? 1 : patientId === "p2" ? 5 : 8}`}
+              alt={patient.name}
+              className="w-16 h-16 rounded-full"
+            />
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">{patient.name}</h3>
+              <p className="text-sm text-gray-500">Age: {patient.age} | {patient.gender}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500">{t.currentHydration}</p>
+              <p className={`text-xl font-bold ${statusColor}`}>{Math.round(patient.hydrationLevel)}%</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500">{t.todaysIntake}</p>
+              <p className="text-xl font-bold text-gray-800">{patient.dailyIntake}ml</p>
+            </div>
+          </div>
+
+          {/* Health Stats */}
+          <div className="border-t border-gray-100 pt-3">
+            <h4 className="text-xs font-medium text-gray-700 mb-2">{t.healthStatistics}</h4>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <p className="text-xs text-gray-500">{t.avg}</p>
+                <p className="text-sm font-bold text-gray-800">{avgHydration}%</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500">{t.min}</p>
+                <p className="text-sm font-bold text-red-500">{minHydration}%</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500">{t.max}</p>
+                <p className="text-sm font-bold text-green-500">{maxHydration}%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Full History Chart */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.thirtyDayHistory}</h3>
+          <SimpleChart data={history} color="#3b82f6" />
+        </div>
+
+        {/* Recent Alerts */}
+        {patientNotifications.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mr-2" />
+              {t.recentAlerts}
+            </h3>
+            <div className="space-y-2">
+              {patientNotifications.map((n) => (
+                <div key={n.id} className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs font-medium text-gray-800">{n.title}</p>
+                  <p className="text-xs text-gray-500">{n.message}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Report Section */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+            <FileText className="w-4 h-4 text-blue-500 mr-2" />
+            {t.healthReport}
+          </h3>
+          <div className="space-y-2">
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-xs text-gray-600">{t.lastCheckup}</span>
+              <span className="text-xs text-gray-800">2 weeks ago</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-xs text-gray-600">{t.doctor_placeholder}</span>
+              <span className="text-xs text-gray-800">Dr. Sarah Johnson</span>
+            </div>
+            <div className="flex justify-between py-2">
+              <span className="text-xs text-gray-600">{t.status}</span>
+              <span className={`text-xs font-medium capitalize ${statusColor}`}>{statusText}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── SETTINGS PAGE ───────────────────────────────────────────────────────────────
+const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
+  const t = translations[language];
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.settings}</h2>
+        </div>
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <div className="flex items-center space-x-4 mb-4">
+            <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full" />
+            <div>
+              <h3 className="font-medium text-gray-800">{user.name}</h3>
+              <p className="text-sm text-gray-500 capitalize">{user.role === "patient" ? t.patient : user.role === "doctor" ? t.doctor : t.admin}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm text-gray-600">{t.email}</span>
+              <span className="text-sm text-gray-800">{user.email}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm text-gray-600">{t.notifications}</span>
+              <span className="text-sm text-green-600">{t.enabled}</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-gray-600">{t.darkMode}</span>
+              <span className="text-sm text-gray-800">{t.off}</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onLogout}
+          className="w-full py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors"
+        >
+          {t.logout}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── USERS PAGE (ADMIN) ────────────────────────────────────────────────────────
+const UsersPage = ({ onBack, onNavigate, language, setLanguage }) => {
+  const t = translations[language];
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.userManagement}</h2>
+        </div>
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-xs font-medium text-gray-500 mb-2">{t.patients}</h3>
+          <div className="space-y-2 mb-4">
+            {mockPatients.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => onNavigate("patient-detail", p.id)}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+              >
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={`https://i.pravatar.cc/150?img=${p.id === "p1" ? 1 : p.id === "p2" ? 5 : 8}`}
+                    alt={p.name}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{p.name}</p>
+                    <p className="text-xs text-gray-500">Age: {p.age}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-gray-800">{Math.round(p.hydrationLevel)}%</p>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    p.status === "low" ? "bg-red-100 text-red-600" : p.status === "high" ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
+                  }`}>
+                    {p.status === "low" ? t.low : p.status === "high" ? t.high : t.normal}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="text-xs font-medium text-gray-500 mb-2">{t.doctor}</h3>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <img src="https://i.pravatar.cc/150?img=5" alt="Dr. Sarah" className="w-10 h-10 rounded-full" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">Dr. Sarah Johnson</p>
+                <p className="text-xs text-gray-500">Internal Medicine</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── ANALYTICS PAGE ────────────────────────────────────────────────────────────
+const AnalyticsPage = ({ onBack, language, setLanguage }) => {
+  const t = translations[language];
+  const [data] = useState({
+    avgHydration: 62,
+    lowHydration: 15,
+    highHydration: 8,
+    totalReadings: 1247,
+  });
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.analytics}</h2>
+        </div>
+        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.avgHydration}</p>
+            <p className="text-xl font-bold text-gray-800">{data.avgHydration}%</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.lowHydration}</p>
+            <p className="text-xl font-bold text-red-500">{data.lowHydration}%</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.highHydration}</p>
+            <p className="text-xl font-bold text-amber-500">{data.highHydration}%</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{t.totalReadings}</p>
+            <p className="text-xl font-bold text-gray-800">{data.totalReadings}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.hydrationDistribution}</h3>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="!text-black">{t.normalRange}</span>
+                <span>77%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: "77%" }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="!text-black">{t.lowRange}</span>
+                <span>15%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: "15%" }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="!text-black">{t.highRange}</span>
+                <span>8%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: "8%" }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── ROOT APP ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+export default function App() {
+  const [currentPage, setCurrentPage] = useState("login");
+  const [pageParams, setPageParams] = useState(null);
+  const [language, setLanguage] = useState("pt");
+  const { user: authUser, loading: authLoading, setUser: setAuthUser } = useAuth();
+
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (authUser) {
+      setUser(authUser);
+      setCurrentPage(authUser.role);
+    } else if (!authLoading) {
+      setUser(null);
+      setCurrentPage("login");
+    }
+  }, [authUser, authLoading]);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    setAuthUser(userData);
+    setCurrentPage(userData.role);
+  };
+
+  const handleLogout = () => {
+    setStoredToken(null);
+    setStoredRefreshToken(null);
+    setUser(null);
+    setAuthUser(null);
+    setCurrentPage("login");
+  };
+
+  const navigateTo = (page, params = null) => {
+    setPageParams(params);
+    setCurrentPage(page);
+  };
+
+  const goBack = () => {
+    setCurrentPage(user ? user.role : "login");
+  };
+
+  const renderPage = () => {
+    const commonProps = { language, setLanguage };
+
+    switch (currentPage) {
+      case "login":
+        return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
+      case "register":
+        return <RegisterPage onLogin={handleLogin} onBack={goBack} {...commonProps} />;
+      case "patient":
+        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+      case "doctor":
+        return <DoctorDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+      case "admin":
+        return <AdminDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+      case "notifications":
+        return <NotificationsPage user={user} onBack={goBack} {...commonProps} />;
+      case "history":
+        return <HistoryPage user={user} onBack={goBack} {...commonProps} />;
+      case "patient-detail":
+        return <PatientDetailPage patientId={pageParams} onBack={goBack} {...commonProps} />;
+      case "settings":
+        return <SettingsPage user={user} onBack={goBack} onLogout={handleLogout} {...commonProps} />;
+      case "users":
+        return <UsersPage onBack={goBack} onNavigate={navigateTo} {...commonProps} />;
+      case "analytics":
+        return <AnalyticsPage onBack={goBack} {...commonProps} />;
+      default:
+        return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh]">
+        {renderPage()}
+      </div>
+    </div>
+  );
 }
