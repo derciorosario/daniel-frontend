@@ -48,7 +48,7 @@ const decodeHiWatchHealth = (bytes) => {
   return result;
 };
 
-export default function WatchConnect({ onHealthUpdate, onDisconnect }) {
+export default function WatchConnect({ onHealthUpdate, onDisconnect, savedReadings = [], onSaveReading }) {
   const [initialized, setInitialized] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [devices, setDevices] = useState([]);
@@ -59,9 +59,11 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect }) {
   const [watchSpo2, setWatchSpo2] = useState(null);
   const [watchBloodPressure, setWatchBloodPressure] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   const connectedRef = useRef(null);
   const healthRef = useRef({ heartRate: null, spo2: null, bloodPressure: null });
+  const lastSavedRef = useRef({ key: null, time: 0 });
 
   const addLog = (message) => {
     setLogs(prev => [...prev.slice(-499), `${new Date().toLocaleTimeString()}: ${message}`]);
@@ -192,6 +194,19 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect }) {
         };
 
         if (onHealthUpdate) onHealthUpdate(displayed);
+        setLastUpdate(new Date());
+
+        const saveKey = `${displayed.heartRate}-${displayed.spo2}-${displayed.bloodPressure}-${displayed.deviceId}`;
+        if (onSaveReading && displayed.heartRate !== null && lastSavedRef.current.key !== saveKey) {
+          lastSavedRef.current = { key: saveKey, time: Date.now() };
+          onSaveReading({
+            heartRate: displayed.heartRate,
+            spo2: displayed.spo2,
+            bloodPressure: displayed.bloodPressure,
+            deviceId: displayed.deviceId,
+          });
+        }
+
         addLog(`⌚ NUS: ${bytesToHex(value)}`);
       });
 
@@ -302,9 +317,12 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect }) {
 
   if (connectedDevice) {
     return (
-      <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+      <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 text-black">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">⌚ Watch Connected</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">⌚ Watch Connected</h3>
+            <p className="text-xs text-gray-500">{connectedDevice.name || connectedDevice.localName || connectedDevice.deviceId}</p>
+          </div>
           <button onClick={disconnect} className="bg-gray-700 text-white px-4 py-2 rounded text-sm">
             Disconnect
           </button>
@@ -329,6 +347,12 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect }) {
           </div>
         </div>
 
+        {lastUpdate && (
+          <p className="text-xs text-gray-400 mb-3">
+            Last updated: {lastUpdate.toLocaleString()}
+          </p>
+        )}
+
         {logs.length > 0 && (
           <div className="bg-black text-green-400 rounded p-3 max-h-48 overflow-y-auto font-mono text-xs">
             {logs.map((log, i) => <div key={i}>{log}</div>)}
@@ -339,7 +363,36 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 text-black">
+    <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+      {savedReadings && savedReadings.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">💾 Saved Health Data</h3>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-xs text-gray-500">❤️ HR</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {savedReadings[0].heartRate !== null ? `${savedReadings[0].heartRate} BPM` : '--'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">🫁 SpO₂</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {savedReadings[0].spo2 !== null ? `${savedReadings[0].spo2}%` : '--'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">🩸 BP</p>
+                <p className="text-sm font-bold text-gray-800">{savedReadings[0].bloodPressure || '--'}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Last saved: {savedReadings[0].createdAt ? new Date(savedReadings[0].createdAt).toLocaleString() : ''}
+            </p>
+          </div>
+        </div>
+      )}
+
       <h3 className="text-lg font-semibold text-gray-800 mb-3">⌚ Connect Smartwatch</h3>
       <p className="text-xs text-gray-500 mb-3">
         {initialized ? 'Ready to scan for BLE devices.' : 'Initializing Bluetooth...'}

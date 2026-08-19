@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import client, { setStoredToken, setStoredRefreshToken, isNative } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-import { getHealthReadings, getPatients } from "../api/health";
+import { getHealthReadings, getPatients, createHealthReading } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import {
@@ -651,6 +651,20 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
     setLiveHealth(displayed);
   };
 
+  const handleSaveReading = async (readingData) => {
+    try {
+      await createHealthReading({
+        heartRate: readingData.heartRate,
+        spo2: readingData.spo2,
+        bloodPressure: readingData.bloodPressure,
+        deviceId: readingData.deviceId,
+      });
+      fetchReadings();
+    } catch (err) {
+      console.error('Failed to save health reading:', err);
+    }
+  };
+
   const handleDisconnect = () => {
     setLiveHealth(null);
   };
@@ -665,7 +679,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
       {/* Header */}
       <div className="bg-white shadow-sm p-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full" />
           <div>
             <h2 className="font-semibold text-gray-800">{user.name}</h2>
             <p className="text-xs text-gray-500">{t.patient}</p>
@@ -697,6 +710,8 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
           <WatchConnect
             onHealthUpdate={handleHealthUpdate}
             onDisconnect={handleDisconnect}
+            savedReadings={readings}
+            onSaveReading={handleSaveReading}
           />
         ) : (
           <WatchHealthDisplay readings={readings} loading={loadingReadings} />
