@@ -5,6 +5,7 @@ import { getHealthReadings, getPatients, createHealthReading } from "../api/heal
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
+import SimpleChart from "../components/SimpleChart";
 import {
   Heart,
   Droplet,
@@ -394,43 +395,6 @@ const generateMockNotifications = (lang = "pt") => {
   ];
 };
 
-// ─── CHART COMPONENT ───────────────────────────────────────────────────────────
-const SimpleChart = ({ data, color = "#3b82f6" }) => {
-  const maxValue = Math.max(...data.map((d) => d.level));
-  const minValue = Math.min(...data.map((d) => d.level));
-  const range = maxValue - minValue || 1;
-
-  const points = data
-    .map((d, i) => {
-      const x = (i / (data.length - 1)) * 100;
-      const y = 100 - ((d.level - minValue) / range) * 80;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <div className="w-full h-32 bg-gray-50 rounded-lg p-2">
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        <polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="2"
-          className="drop-shadow-sm"
-        />
-        <polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
-  );
-};
-
 // ─── LANGUAGE SELECTOR ─────────────────────────────────────────────────────────
 const LanguageSelector = ({ language, setLanguage, t }) => {
   return (
@@ -729,64 +693,7 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
           readings={readings}
         />
 
-        {/* Hydration Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">{t.currentHydration}</h3>
-            <Droplet className={`w-6 h-6 ${statusColor}`} />
-          </div>
-          <div className="flex items-center justify-center my-6">
-            <div className="relative w-32 h-32">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  stroke="#e5e7eb"
-                  strokeWidth="8"
-                  fill="none"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  stroke={status === "low" ? "#ef4444" : status === "high" ? "#f59e0b" : "#10b981"}
-                  strokeWidth="8"
-                  fill="none"
-                  strokeDasharray={`${Math.round(currentHydration) * 2.51} 251`}
-                  className="transition-all duration-500"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-3xl font-bold text-gray-800">{Math.round(currentHydration)}%</span>
-          </div>
-            </div>
-          </div>
-          <div className="text-center">
-            <p className={`text-sm font-medium ${statusColor} capitalize`}>{statusText} {t.hydrationLevel?.toLowerCase() || ""}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {t.dailyIntake}: 1,800ml / {user.hydrationTarget}ml
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t.todaysIntake}</p>
-            <p className="text-xl font-bold text-gray-800">1.8L</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t.lastReading}</p>
-            <p className="text-xl font-bold text-gray-800">10:30 AM</p>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sevenDayHistory}</h3>
-          <SimpleChart data={history} color="#3b82f6" />
-        </div>
+     
 
         {/* Recent Alerts */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">

@@ -1,4 +1,9 @@
+import { useState } from "react";
+import SimpleChart from "./SimpleChart";
+
 const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
+  const [chartMetric, setChartMetric] = useState("heartRate");
+
   if (loading) {
     return (
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
@@ -19,6 +24,29 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
 
   const latest = readings[0];
   const recent = readings.slice(0, 6);
+  const chartData = readings
+    .slice()
+    .reverse()
+    .map((r) => ({
+      time: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "",
+      level:
+        chartMetric === "heartRate"
+          ? r.heartRate
+          : chartMetric === "spo2"
+          ? r.spo2
+          : r.systolic,
+    }))
+    .filter((d) => d.level !== null && d.level !== undefined);
+
+  const chartColor =
+    chartMetric === "heartRate" ? "#ef4444" : chartMetric === "spo2" ? "#3b82f6" : "#8b5cf6";
+
+  const chartTitle =
+    chartMetric === "heartRate"
+      ? "❤️ Heart Rate"
+      : chartMetric === "spo2"
+      ? "🫁 SpO₂"
+      : "🩸 Blood Pressure (Systolic)";
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
@@ -56,6 +84,36 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
           <p className="text-xs text-gray-500">📈 Total Readings</p>
           <p className="text-lg font-bold text-gray-800">{readings.length}</p>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-gray-700">{chartTitle}</h4>
+          <div className="flex space-x-2">
+            {[
+              { key: "heartRate", label: "HR" },
+              { key: "spo2", label: "SpO₂" },
+              { key: "bloodPressure", label: "BP" },
+            ].map((option) => (
+              <button
+                key={option.key}
+                onClick={() => setChartMetric(option.key)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  chartMetric === option.key
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {chartData.length > 1 ? (
+          <SimpleChart data={chartData} color={chartColor} />
+        ) : (
+          <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
+        )}
       </div>
 
       <div className="flex items-center justify-between mb-2">
