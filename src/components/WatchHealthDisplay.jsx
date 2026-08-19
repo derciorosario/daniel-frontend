@@ -3,6 +3,7 @@ import SimpleChart from "./SimpleChart";
 
 const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   const [chartMetric, setChartMetric] = useState("heartRate");
+  const [chartType, setChartType] = useState("line");
 
   if (loading) {
     return (
@@ -107,10 +108,30 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
                 {option.label}
               </button>
             ))}
+            <button
+              onClick={() => setChartType("line")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                chartType === "line"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Line
+            </button>
+            <button
+              onClick={() => setChartType("bar")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                chartType === "bar"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Bar
+            </button>
           </div>
         </div>
         {chartData.length > 1 ? (
-          <SimpleChart data={chartData} color={chartColor} />
+          <SimpleChart data={chartData} color={chartColor} type={chartType} />
         ) : (
           <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
         )}
