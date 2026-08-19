@@ -1,4 +1,4 @@
-const WatchHealthDisplay = ({ readings, loading }) => {
+const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
@@ -18,6 +18,7 @@ const WatchHealthDisplay = ({ readings, loading }) => {
   }
 
   const latest = readings[0];
+  const recent = readings.slice(0, 6);
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
@@ -57,6 +58,18 @@ const WatchHealthDisplay = ({ readings, loading }) => {
         </div>
       </div>
 
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-xs font-medium text-gray-700">Recent Readings</h4>
+        {readings.length > 6 && (
+          <button
+            onClick={onViewAll}
+            className="text-xs text-blue-500 hover:text-blue-600 font-medium"
+          >
+            View All
+          </button>
+        )}
+      </div>
+
       <div className="overflow-x-auto border rounded">
         <table className="min-w-full text-xs text-gray-700">
           <thead className="bg-gray-100">
@@ -68,7 +81,7 @@ const WatchHealthDisplay = ({ readings, loading }) => {
             </tr>
           </thead>
           <tbody>
-            {readings.slice(0, 10).map((r, i) => (
+            {recent.map((r, i) => (
               <tr key={r.id || i} className="border-t text-gray-700">
                 <td className="p-2 text-gray-700">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '--'}</td>
                 <td className="p-2 text-gray-700">{r.heartRate !== null ? `${r.heartRate} BPM` : '--'}</td>

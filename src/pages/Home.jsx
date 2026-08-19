@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getHealthReadings, getPatients, createHealthReading } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
+import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
 import {
   Heart,
   Droplet,
@@ -607,6 +608,7 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
   const [readings, setReadings] = useState([]);
   const [liveHealth, setLiveHealth] = useState(null);
   const [loadingReadings, setLoadingReadings] = useState(true);
+  const [isAllReadingsOpen, setIsAllReadingsOpen] = useState(false);
 
   // Update notifications when language changes
   useEffect(() => {
@@ -714,8 +716,18 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
             onSaveReading={handleSaveReading}
           />
         ) : (
-          <WatchHealthDisplay readings={readings} loading={loadingReadings} />
+          <WatchHealthDisplay
+            readings={readings}
+            loading={loadingReadings}
+            onViewAll={() => setIsAllReadingsOpen(true)}
+          />
         )}
+
+        <AllHealthReadingsDialog
+          open={isAllReadingsOpen}
+          onClose={() => setIsAllReadingsOpen(false)}
+          readings={readings}
+        />
 
         {/* Hydration Card */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
