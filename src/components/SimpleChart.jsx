@@ -1,4 +1,4 @@
-const SimpleChart = ({ data, color = "#3b82f6", type = "line" }) => {
+const SimpleChart = ({ data, color = "#3b82f6", type = "line", className = "", height = '128px', showLabels = true }) => {
   const values = data.map((d) => d.level);
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
@@ -19,7 +19,7 @@ const SimpleChart = ({ data, color = "#3b82f6", type = "line" }) => {
     });
 
     return (
-      <div className="w-full h-32 bg-gray-50 rounded-lg p-2">
+      <div className={`w-full bg-gray-50 rounded-lg p-2 ${className}`} style={{ height }}>
         <svg viewBox="0 0 100 100" className="w-full h-full">
           {bars.map((bar, i) => (
             <g key={i}>
@@ -32,14 +32,26 @@ const SimpleChart = ({ data, color = "#3b82f6", type = "line" }) => {
                 opacity="0.8"
                 rx="1"
               />
-              <text
-                x={bar.x + bar.w / 2}
-                y={bar.y - 2}
-                textAnchor="middle"
-                className="text-[4px] fill-gray-700 font-medium"
-              >
-                {bar.value}
-              </text>
+              {showLabels && (
+                <text
+                  x={bar.x + bar.w / 2}
+                  y={bar.y - 2}
+                  textAnchor="middle"
+                  className="text-[4px] fill-gray-700 font-medium"
+                >
+                  {bar.value}
+                </text>
+              )}
+              {showLabels && (
+                <text
+                  x={bar.x + bar.w / 2}
+                  y={100 - 1}
+                  textAnchor="middle"
+                  className="text-[3px] fill-gray-500"
+                >
+                  {bar.label}
+                </text>
+              )}
             </g>
           ))}
         </svg>
@@ -47,23 +59,17 @@ const SimpleChart = ({ data, color = "#3b82f6", type = "line" }) => {
     );
   }
 
-  const pointCoords = data
-    .map((d, i) => {
-      const x = (i / (data.length - 1)) * 100;
-      const y = 100 - padding - ((d.level - minValue) / range) * chartHeight;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
   const dots = data
     .map((d, i) => {
       const x = (i / (data.length - 1)) * 100;
       const y = 100 - padding - ((d.level - minValue) / range) * chartHeight;
-      return { x, y, value: d.level };
+      return { x, y, value: d.level, label: d.time };
     });
 
+  const pointCoords = dots.map((dot) => `${dot.x},${dot.y}`).join(" ");
+
   return (
-    <div className="w-full h-32 bg-gray-50 rounded-lg p-2">
+    <div className={`w-full bg-gray-50 rounded-lg p-2 ${className}`} style={{ height: '300px' }}>
       <svg viewBox="0 0 100 100" className="w-full h-full">
         <polyline
           points={pointCoords}
@@ -83,14 +89,26 @@ const SimpleChart = ({ data, color = "#3b82f6", type = "line" }) => {
         {dots.map((dot, i) => (
           <g key={i}>
             <circle cx={dot.x} cy={dot.y} r="3" fill={color} />
-            <text
-              x={dot.x}
-              y={dot.y - 4}
-              textAnchor="middle"
-              className="text-[4px] fill-gray-700 font-medium"
-            >
-              {dot.value}
-            </text>
+            {showLabels && (
+              <text
+                x={dot.x}
+                y={dot.y - 4}
+                textAnchor="middle"
+                className="text-[4px] fill-gray-700 font-medium"
+              >
+                {dot.value}
+              </text>
+            )}
+            {showLabels && (
+              <text
+                x={dot.x}
+                y={100 - 1}
+                textAnchor="middle"
+                className="text-[3px] fill-gray-500"
+              >
+                {dot.label}
+              </text>
+            )}
           </g>
         ))}
       </svg>

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import SimpleChart from "./SimpleChart";
+import EnlargedChartDialog from "./EnlargedChartDialog";
 
 const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   const [chartMetric, setChartMetric] = useState("heartRate");
   const [chartType, setChartType] = useState("line");
   const [period, setPeriod] = useState("daily");
+  const [isEnlargedChartOpen, setIsEnlargedChartOpen] = useState(false);
 
   if (loading) {
     return (
@@ -27,7 +29,9 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   const getFilteredReadings = () => {
     const now = new Date();
     let cutoff;
-    if (period === "daily") {
+    if (period === "hourly") {
+      cutoff = new Date(now.getTime() - 60 * 60 * 1000);
+    } else if (period === "daily") {
       cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     } else if (period === "weekly") {
       cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -37,13 +41,29 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
     return readings.filter((r) => new Date(r.createdAt) >= cutoff);
   };
 
+  const getChartLabel = (date) => {
+    if (period === "hourly") {
+      return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    if (period === "daily") {
+      return new Date(date).toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+    if (period === "weekly") {
+      return new Date(date).toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+    const d = new Date(date);
+    const start = new Date(d.getFullYear(), d.getMonth(), 1);
+    const week = Math.ceil((d.getDate() + start.getDay()) / 7);
+    return `W${week}`;
+  };
+
   const filteredReadings = getFilteredReadings();
   const latest = filteredReadings[0] || readings[0];
   const chartData = filteredReadings
     .slice()
     .reverse()
     .map((r) => ({
-      time: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "",
+      time: r.createdAt ? getChartLabel(r.createdAt) : "",
       level:
         chartMetric === "heartRate"
           ? r.heartRate
@@ -128,6 +148,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {[
+            { key: "hourly", label: "Hourly" },
             { key: "daily", label: "Daily" },
             { key: "weekly", label: "Weekly" },
             { key: "monthly", label: "Monthly" },
@@ -168,11 +189,30 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
           </div>
         </div>
         {chartData.length > 1 ? (
-          <SimpleChart data={chartData} color={chartColor} type={chartType} />
+          <SimpleChart data={chartData} color={chartColor} type={chartType} showLabels={false} />
         ) : (
           <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
         )}
+        {chartData.length > 1 && (
+          <div className="mt-3 text-center">
+            <button
+              onClick={() => setIsEnlargedChartOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors"
+            >
+              View Larger
+            </button>
+          </div>
+        )}
       </div>
+
+      <EnlargedChartDialog
+        open={isEnlargedChartOpen}
+        onClose={() => setIsEnlargedChartOpen(false)}
+        chartData={chartData}
+        chartColor={chartColor}
+        chartType={chartType}
+        chartMetric={chartMetric}
+      />
 
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-xs font-medium text-gray-700">Recent Readings</h4>
