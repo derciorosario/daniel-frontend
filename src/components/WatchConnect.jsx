@@ -329,19 +329,19 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect, savedReadin
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-red-50 rounded-xl p-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500">❤️ Heart Rate</p>
             <p className="text-xl font-bold text-gray-800">{watchHeartRate !== null ? `${watchHeartRate} BPM` : '--'}</p>
           </div>
-          <div className="bg-blue-50 rounded-xl p-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500">🫁 SpO₂</p>
             <p className="text-xl font-bold text-gray-800">{watchSpo2 !== null ? `${watchSpo2}%` : '--'}</p>
           </div>
-          <div className="bg-purple-50 rounded-xl p-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500">🩸 Blood Pressure</p>
             <p className="text-xl font-bold text-gray-800">{watchBloodPressure || '--'}</p>
           </div>
-          <div className="bg-green-50 rounded-xl p-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500">🔋 Battery</p>
             <p className="text-xl font-bold text-gray-800">{batteryLevel !== null ? `${batteryLevel}%` : '--'}</p>
           </div>
@@ -367,7 +367,7 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect, savedReadin
       {savedReadings && savedReadings.length > 0 && (
         <div className="mb-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">💾 Saved Health Data</h3>
-          <div className="bg-gray-50 rounded-xl p-3">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <p className="text-xs text-gray-500">❤️ HR</p>

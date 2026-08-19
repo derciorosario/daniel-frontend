@@ -24,7 +24,7 @@ const WatchHealthDisplay = ({ readings, loading }) => {
       <h3 className="text-sm font-semibold text-gray-700 mb-3">📊 Latest Health Readings</h3>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-red-50 rounded-xl p-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs text-gray-500">❤️ Heart Rate</p>
           <p className="text-lg font-bold text-gray-800">
             {latest.heartRate !== null ? `${latest.heartRate} BPM` : '--'}
@@ -33,7 +33,7 @@ const WatchHealthDisplay = ({ readings, loading }) => {
             {latest.createdAt ? new Date(latest.createdAt).toLocaleString() : ''}
           </p>
         </div>
-        <div className="bg-blue-50 rounded-xl p-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs text-gray-500">🫁 SpO₂</p>
           <p className="text-lg font-bold text-gray-800">
             {latest.spo2 !== null ? `${latest.spo2}%` : '--'}
@@ -42,7 +42,7 @@ const WatchHealthDisplay = ({ readings, loading }) => {
             {latest.createdAt ? new Date(latest.createdAt).toLocaleString() : ''}
           </p>
         </div>
-        <div className="bg-purple-50 rounded-xl p-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs text-gray-500">🩸 Blood Pressure</p>
           <p className="text-lg font-bold text-gray-800">
             {latest.bloodPressure || '--'}
@@ -51,7 +51,7 @@ const WatchHealthDisplay = ({ readings, loading }) => {
             {latest.createdAt ? new Date(latest.createdAt).toLocaleString() : ''}
           </p>
         </div>
-        <div className="bg-gray-50 rounded-xl p-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs text-gray-500">📈 Total Readings</p>
           <p className="text-lg font-bold text-gray-800">{readings.length}</p>
         </div>
