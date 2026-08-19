@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import client, { setStoredToken, setStoredRefreshToken, isNative } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-import { getHealthReadings, getPatients, createHealthReading } from "../api/health";
+import { getHealthReadings, getPatients, createHealthReading, getPatient } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
@@ -1207,17 +1207,74 @@ const HistoryPage = ({ user, onBack, language, setLanguage }) => {
 // ─── PATIENT DETAIL PAGE ───────────────────────────────────────────────────────
 const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
   const t = translations[language];
-  const patient = mockPatients.find((p) => p.id === patientId);
-  const history = generateHydrationHistory(patientId, 30);
-  const patientNotifications = generateMockNotifications(language).filter((n) => n.patientId === patientId);
+  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!patient) return null;
+  useEffect(() => {
+    const fetchPatient = async () => {
+      try {
+        setLoading(true);
+        const { data } = await getPatient(patientId);
+        setPatient(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch patient:', err);
+        setError('Failed to load patient details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (patientId) {
+      fetchPatient();
+    }
+  }, [patientId]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="bg-white shadow-sm p-4 flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.patientDetails}</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !patient) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="bg-white shadow-sm p-4 flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.patientDetails}</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-red-500">{error || 'Patient not found'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const patientName = patient.user?.name || patient.name || 'Unknown';
+  const patientAge = patient.age || '--';
+  const patientGender = patient.gender || '--';
+  const history = generateHydrationHistory(patient.id, 30);
+  const patientNotifications = generateMockNotifications(language).filter((n) => n.patientId === patient.id);
 
   const avgHydration = Math.round(history.reduce((sum, h) => sum + h.level, 0) / history.length);
   const minHydration = Math.min(...history.map((h) => h.level));
   const maxHydration = Math.max(...history.map((h) => h.level));
-  const statusColor = patient.status === "low" ? "text-red-500" : patient.status === "high" ? "text-amber-500" : "text-green-500";
-  const statusText = patient.status === "low" ? t.low : patient.status === "high" ? t.high : t.normal;
+  const hydrationLevel = history.length > 0 ? history[history.length - 1].level : 0;
+  const statusColor = hydrationLevel < 50 ? "text-red-500" : hydrationLevel > 80 ? "text-amber-500" : "text-green-500";
+  const statusText = hydrationLevel < 50 ? t.low : hydrationLevel > 80 ? t.high : t.normal;
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -1235,25 +1292,23 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
         {/* Patient Profile */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <div className="flex items-center space-x-4 mb-4">
-            <img
-              src={`https://i.pravatar.cc/150?img=${patientId === "p1" ? 1 : patientId === "p2" ? 5 : 8}`}
-              alt={patient.name}
-              className="w-16 h-16 rounded-full"
-            />
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+              <User className="w-8 h-8 text-gray-500" />
+            </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-800">{patient.name}</h3>
-              <p className="text-sm text-gray-500">Age: {patient.age} | {patient.gender}</p>
+              <h3 className="text-lg font-bold text-gray-800">{patientName}</h3>
+              <p className="text-sm text-gray-500">Age: {patientAge} | {patientGender}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-500">{t.currentHydration}</p>
-              <p className={`text-xl font-bold ${statusColor}`}>{Math.round(patient.hydrationLevel)}%</p>
+              <p className={`text-xl font-bold ${statusColor}`}>{Math.round(hydrationLevel)}%</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-500">{t.todaysIntake}</p>
-              <p className="text-xl font-bold text-gray-800">{patient.dailyIntake}ml</p>
+              <p className="text-xl font-bold text-gray-800">{Math.round(1500 + Math.random() * 1000)}ml</p>
             </div>
           </div>
 
@@ -1314,7 +1369,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             </div>
             <div className="flex justify-between py-2 border-b border-gray-100">
               <span className="text-xs text-gray-600">{t.doctor_placeholder}</span>
-              <span className="text-xs text-gray-800">Dr. Sarah Johnson</span>
+              <span className="text-xs text-gray-800">{patient.user?.name || 'Dr. Sarah Johnson'}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-xs text-gray-600">{t.status}</span>
