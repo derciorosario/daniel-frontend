@@ -15,3 +15,19 @@ export const getPatients = () => {
 export const getPatient = (id) => {
   return client.get(`/patients/${id}`);
 };
+
+export const getUsers = () => {
+  return client.get("/users");
+};
+
+export const getUser = (id) => {
+  return client.get(`/users/${id}`);
+};
+
+export const updateUser = (id, data) => {
+  return client.put(`/users/${id}`, data);
+};
+
+export const deleteUser = (id) => {
+  return client.delete(`/users/${id}`);
+};

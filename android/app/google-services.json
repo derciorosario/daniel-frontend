@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "132709843917",
-    "project_id": "jr-multiservicos-ac4ae",
-    "storage_bucket": "jr-multiservicos-ac4ae.firebasestorage.app"
+    "project_number": "315983054570",
+    "project_id": "hydrawatch-91fac",
+    "storage_bucket": "hydrawatch-91fac.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:132709843917:android:11ad740f1f603c259cfa84",
+        "mobilesdk_app_id": "1:315983054570:android:3deafb362b5831d30cf993",
         "android_client_info": {
-          "package_name": "com.jrmultiservicos.app"
+          "package_name": "com.hydrawatch.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCzuJsEq-d1z6j5torlMays3Q_lEm3XBiw"
+          "current_key": "AIzaSyA7ReDRpl4W4vaTfbmToiDIpmClNL7xNl8"
         }
       ],
       "services": {

@@ -1,4 +1,4 @@
-package com.jrmultiservicos.app;
+package com.hydrawatch.app;
 
 import com.getcapacitor.BridgeActivity;
 

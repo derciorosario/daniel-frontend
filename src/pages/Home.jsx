@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import client, { setStoredToken, setStoredRefreshToken, isNative } from "../api/client";
+import client, { setStoredToken, setStoredRefreshToken, isNative, getNotifications, markNotificationRead } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-import { getHealthReadings, getPatients, createHealthReading, getPatient } from "../api/health";
+import { getHealthReadings, getPatients, createHealthReading, getPatient, getUsers } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
 import SimpleChart from "../components/SimpleChart";
+import { useLocation, useNavigate } from "react-router-dom";
+
+
 import {
   Heart,
   Droplet,
@@ -34,6 +37,8 @@ import {
   Globe,
 } from "lucide-react";
 import RegisterPage from "./Register";
+import { useData } from "../contexts/DataContext";
+import { registerPush } from "../services/push";
 
 // ─── TRANSLATIONS ───────────────────────────────────────────────────────────────
 const translations = {
@@ -63,6 +68,7 @@ const translations = {
     lastReading: "Última Leitura",
     sevenDayHistory: "Histórico de 7 Dias",
     recentAlerts: "Alertas Recentes",
+    totalUsers:'Total Usuários',
     dashboard: "Painel",
     history: "Histórico",
     
@@ -195,6 +201,7 @@ const translations = {
     analytics: "Analytics",
     
     // Admin Dashboard
+    totalUsers:'Total Users',
     administrator: "Administrator",
     systemStatus: "System Status",
     operational: "Operational",
@@ -430,6 +437,8 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+ 
+
   const testCredentials = {
     patient: { email: "john.smith@email.com", password: "patient123" },
     doctor: { email: "sarah.johnson@hospital.com", password: "doctor123" },
@@ -567,17 +576,12 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage }) => {
 const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
   const t = translations[language];
   const [currentHydration, setCurrentHydration] = useState(65);
-  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+  const [unreadCount, setUnreadCount] = useState(0);
   const [history, setHistory] = useState(generateHydrationHistory(user.id));
   const [readings, setReadings] = useState([]);
   const [liveHealth, setLiveHealth] = useState(null);
   const [loadingReadings, setLoadingReadings] = useState(true);
   const [isAllReadingsOpen, setIsAllReadingsOpen] = useState(false);
-
-  // Update notifications when language changes
-  useEffect(() => {
-    setNotifications(generateMockNotifications(language));
-  }, [language]);
 
   // Hydration simulation
   useEffect(() => {
@@ -592,6 +596,22 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
         return newLevel;
       });
     }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = async () => {
+    try {
+      const { data } = await getUnreadNotificationCount();
+      setUnreadCount(data.count || 0);
+    } catch (err) {
+      console.error('Failed to fetch unread count:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -635,7 +655,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
     setLiveHealth(null);
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
   const status = currentHydration < 50 ? "low" : currentHydration > 80 ? "high" : "normal";
   const statusColor = status === "low" ? "text-red-500" : status === "high" ? "text-amber-500" : "text-green-500";
   const statusText = status === "low" ? t.low : status === "high" ? t.high : t.normal;
@@ -693,21 +712,104 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
           readings={readings}
         />
 
-     
+        {/* Temporary Simulation Buttons */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Simulação (Teste)</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await createHealthReading({
+                    heartRate: 72,
+                    spo2: 98,
+                    bloodPressure: '120/80',
+                    systolic: 120,
+                    diastolic: 80,
+                    deviceId: 'simulator',
+                  });
+                  fetchReadings();
+                  fetchUnreadCount();
+                } catch (err) {
+                  console.error('Simulation failed:', err);
+                }
+              }}
+              className="py-2 px-3 bg-green-500 text-white text-xs rounded-lg font-medium hover:bg-green-600"
+            >
+              Normal Reading
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await createHealthReading({
+                    heartRate: 140,
+                    spo2: 85,
+                    bloodPressure: '180/110',
+                    systolic: 180,
+                    diastolic: 110,
+                    deviceId: 'simulator',
+                  });
+                  fetchReadings();
+                  fetchUnreadCount();
+                } catch (err) {
+                  console.error('Simulation failed:', err);
+                }
+              }}
+              className="py-2 px-3 bg-red-500 text-white text-xs rounded-lg font-medium hover:bg-red-600"
+            >
+              Critical Reading
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await createHealthReading({
+                    heartRate: 45,
+                    spo2: 92,
+                    bloodPressure: '85/55',
+                    systolic: 85,
+                    diastolic: 55,
+                    deviceId: 'simulator',
+                  });
+                  fetchReadings();
+                  fetchUnreadCount();
+                } catch (err) {
+                  console.error('Simulation failed:', err);
+                }
+              }}
+              className="py-2 px-3 bg-amber-500 text-white text-xs rounded-lg font-medium hover:bg-amber-600"
+            >
+              Low Heart Rate
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await createHealthReading({
+                    heartRate: Math.floor(60 + Math.random() * 40),
+                    spo2: Math.floor(90 + Math.random() * 10),
+                    bloodPressure: `${110 + Math.floor(Math.random() * 30)}/${70 + Math.floor(Math.random() * 20)}`,
+                    systolic: 110 + Math.floor(Math.random() * 30),
+                    diastolic: 70 + Math.floor(Math.random() * 20),
+                    deviceId: 'simulator',
+                  });
+                  fetchReadings();
+                  fetchUnreadCount();
+                } catch (err) {
+                  console.error('Simulation failed:', err);
+                }
+              }}
+              className="py-2 px-3 bg-blue-500 text-white text-xs rounded-lg font-medium hover:bg-blue-600"
+            >
+              Random Reading
+            </button>
+          </div>
+        </div>
 
         {/* Recent Alerts */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.recentAlerts}</h3>
           <div className="space-y-2">
-            {notifications.slice(0, 3).map((n) => (
-              <div key={n.id} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-gray-800">{n.title}</p>
-                  <p className="text-xs text-gray-500">{n.message}</p>
-                </div>
-              </div>
-            ))}
+            <p className="text-xs text-gray-500 text-center py-2" onClick={() => onNavigate("notifications")}>
+              {unreadCount > 0 ? `${unreadCount} notificações não lidas` : "Sem alertas recentes"}
+            </p>
           </div>
         </div>
       </div>
@@ -742,12 +844,22 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) 
   const t = translations[language];
   const [patients, setPatients] = useState([]);
   const [readingsMap, setReadingsMap] = useState({});
-  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setNotifications(generateMockNotifications(language));
-  }, [language]);
+    const fetchUnreadCount = async () => {
+      try {
+        const { data } = await getUnreadNotificationCount();
+        setUnreadCount(data.count || 0);
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
+      }
+    };
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -779,8 +891,6 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) 
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const getPatientLatestReading = (patientId) => {
     const list = readingsMap[patientId];
@@ -954,21 +1064,88 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) 
 // ─── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
 const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
   const t = translations[language];
-  const [stats] = useState({
-    totalUsers: 156,
-    totalDoctors: 24,
-    totalPatients: 132,
-    activeAlerts: 8,
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalDoctors: 0,
+    totalPatients: 0,
+    activeAlerts: 0,
     systemStatus: "operational",
   });
-
-  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+  const [readings, setReadings] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setNotifications(generateMockNotifications(language));
-  }, [language]);
+    const fetchUnreadCount = async () => {
+      try {
+        const { data } = await getUnreadNotificationCount();
+        setUnreadCount(data.count || 0);
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
+      }
+    };
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [usersRes, readingsRes] = await Promise.all([
+          getUsers(),
+          getHealthReadings(),
+        ]);
+
+        const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
+        const readingsData = Array.isArray(readingsRes.data) ? readingsRes.data : [];
+
+        setReadings(readingsData);
+
+        const totalUsers = usersData.length;
+        const totalDoctors = usersData.filter((u) => u.role === 'doctor').length;
+        const totalPatients = usersData.filter((u) => u.role === 'patient').length;
+
+        const alerts = readingsData.filter((r) => {
+          if (r.heartRate === null) return false;
+          return r.heartRate < 50 || r.heartRate > 120;
+        });
+
+        setStats({
+          totalUsers,
+          totalDoctors,
+          totalPatients,
+          activeAlerts: alerts.length,
+          systemStatus: "operational",
+        });
+      } catch (err) {
+        console.error('Failed to fetch admin stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const alertReadings = readings.filter((r) => r.heartRate !== null && (r.heartRate < 50 || r.heartRate > 120));
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="bg-white shadow-sm p-4 flex items-center">
+          <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mr-3">
+            <Shield className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="font-semibold text-gray-800">{t.administrator}</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -1036,20 +1213,13 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) =
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.quickActions}</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <button
               onClick={() => onNavigate("users")}
               className="p-3 bg-blue-50 rounded-lg flex flex-col items-center"
             >
               <Users className="w-6 h-6 text-blue-500 mb-1" />
               <span className="text-xs font-medium text-gray-700">{t.manageUsers}</span>
-            </button>
-            <button
-              onClick={() => onNavigate("analytics")}
-              className="p-3 bg-purple-50 rounded-lg flex flex-col items-center"
-            >
-              <PieChart className="w-6 h-6 text-purple-500 mb-1" />
-              <span className="text-xs font-medium text-gray-700">{t.viewAnalytics}</span>
             </button>
           </div>
         </div>
@@ -1058,15 +1228,23 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) =
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.systemAlerts}</h3>
           <div className="space-y-2">
-            {notifications.slice(0, 4).map((n) => (
-              <div key={n.id} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-gray-800">{n.title}</p>
-                  <p className="text-xs text-gray-500">{n.message}</p>
+            {alertReadings.length > 0 ? (
+              alertReadings.slice(0, 4).map((r, i) => (
+                <div key={r.id || i} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-800">
+                      ❤️ Heart Rate: {r.heartRate} BPM
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {r.user?.name || 'Unknown'} - {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-xs text-gray-500 text-center py-4">No active alerts</p>
+            )}
           </div>
         </div>
       </div>
@@ -1099,16 +1277,33 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) =
 // ─── NOTIFICATIONS PAGE ────────────────────────────────────────────────────────
 const NotificationsPage = ({ user, onBack, language, setLanguage }) => {
   const t = translations[language];
-  const [notifications, setNotifications] = useState(generateMockNotifications(language));
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setNotifications(generateMockNotifications(language));
-  }, [language]);
+    fetchNotifications();
+  }, []);
 
-  const markAsRead = (id) => {
+  const fetchNotifications = async () => {
+    try {
+      const { data } = await getNotifications();
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
+    try {
+      await markNotificationRead(id);
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
   };
 
   return (
@@ -1124,34 +1319,44 @@ const NotificationsPage = ({ user, onBack, language, setLanguage }) => {
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto">
-        <div className="space-y-3">
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => markAsRead(n.id)}
-              className={`p-4 rounded-xl shadow-sm cursor-pointer transition-all ${
-                n.read ? "bg-white" : "bg-blue-50 border-l-4 border-blue-500"
-              }`}
-            >
-              <div className="flex items-start space-x-3">
-                <div className={`p-2 rounded-lg ${
-                  n.priority === "high" ? "bg-red-100" : "bg-gray-100"
-                }`}>
-                  <AlertTriangle className={`w-4 h-4 ${
-                    n.priority === "high" ? "text-red-500" : "text-gray-500"
-                  }`} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-gray-800">{n.title}</h4>
-                  <p className="text-xs text-gray-600 mt-1">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    {new Date(n.time).toLocaleString()}
-                  </p>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-sm text-gray-500">Carregando...</p>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-sm text-gray-500">Sem notificações</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notifications.map((n) => (
+              <div
+                key={n.id}
+                onClick={() => markAsRead(n.id)}
+                className={`p-4 rounded-xl shadow-sm cursor-pointer transition-all ${
+                  n.read ? "bg-white" : "bg-blue-50 border-l-4 border-blue-500"
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className={`p-2 rounded-lg ${
+                    n.priority === "high" ? "bg-red-100" : "bg-gray-100"
+                  }`}>
+                    <AlertTriangle className={`w-4 h-4 ${
+                      n.priority === "high" ? "text-red-500" : "text-gray-500"
+                    }`} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-gray-800">{n.title}</h4>
+                    <p className="text-xs text-gray-600 mt-1">{n.message}</p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {new Date(n.createdAt).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1208,18 +1413,27 @@ const HistoryPage = ({ user, onBack, language, setLanguage }) => {
 const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
   const t = translations[language];
   const [patient, setPatient] = useState(null);
+  const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchPatient = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const { data } = await getPatient(patientId);
-        setPatient(data);
+        const [patientRes, readingsRes] = await Promise.all([
+          getPatient(patientId),
+          getHealthReadings(),
+        ]);
+        setPatient(patientRes.data);
+        const allReadings = Array.isArray(readingsRes.data) ? readingsRes.data : [];
+        const patientReadings = allReadings.filter(
+          (r) => (r.patientId || r.patient?.id) === patientId
+        );
+        setReadings(patientReadings);
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch patient:', err);
+        console.error('Failed to fetch patient data:', err);
         setError('Failed to load patient details');
       } finally {
         setLoading(false);
@@ -1227,7 +1441,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
     };
 
     if (patientId) {
-      fetchPatient();
+      fetchData();
     }
   }, [patientId]);
 
@@ -1266,15 +1480,24 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
   const patientName = patient.user?.name || patient.name || 'Unknown';
   const patientAge = patient.age || '--';
   const patientGender = patient.gender || '--';
-  const history = generateHydrationHistory(patient.id, 30);
-  const patientNotifications = generateMockNotifications(language).filter((n) => n.patientId === patient.id);
+  const latestReading = readings[0] || null;
 
-  const avgHydration = Math.round(history.reduce((sum, h) => sum + h.level, 0) / history.length);
-  const minHydration = Math.min(...history.map((h) => h.level));
-  const maxHydration = Math.max(...history.map((h) => h.level));
-  const hydrationLevel = history.length > 0 ? history[history.length - 1].level : 0;
-  const statusColor = hydrationLevel < 50 ? "text-red-500" : hydrationLevel > 80 ? "text-amber-500" : "text-green-500";
-  const statusText = hydrationLevel < 50 ? t.low : hydrationLevel > 80 ? t.high : t.normal;
+  const chartData = readings
+    .slice()
+    .reverse()
+    .map((r) => ({
+      time: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "",
+      level: r.systolic,
+    }))
+    .filter((d) => d.level !== null && d.level !== undefined);
+
+  const hrValues = readings.map((r) => r.heartRate).filter((v) => v !== null);
+  const spo2Values = readings.map((r) => r.spo2).filter((v) => v !== null);
+  const bpValues = readings.map((r) => r.systolic).filter((v) => v !== null);
+
+  const avgHR = hrValues.length ? Math.round(hrValues.reduce((a, b) => a + b, 0) / hrValues.length) : '--';
+  const avgSpO2 = spo2Values.length ? Math.round(spo2Values.reduce((a, b) => a + b, 0) / spo2Values.length) : '--';
+  const avgBP = bpValues.length ? Math.round(bpValues.reduce((a, b) => a + b, 0) / bpValues.length) : '--';
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -1301,14 +1524,38 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             </div>
           </div>
 
+          {/* Latest Health Readings */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">{t.currentHydration}</p>
-              <p className={`text-xl font-bold ${statusColor}`}>{Math.round(hydrationLevel)}%</p>
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-gray-500">❤️ Heart Rate</p>
+              <p className="text-lg font-bold text-gray-800">
+                {latestReading?.heartRate !== null ? `${latestReading.heartRate} BPM` : '--'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {latestReading?.createdAt ? new Date(latestReading.createdAt).toLocaleString() : ''}
+              </p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">{t.todaysIntake}</p>
-              <p className="text-xl font-bold text-gray-800">{Math.round(1500 + Math.random() * 1000)}ml</p>
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-gray-500">🫁 SpO₂</p>
+              <p className="text-lg font-bold text-gray-800">
+                {latestReading?.spo2 !== null ? `${latestReading.spo2}%` : '--'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {latestReading?.createdAt ? new Date(latestReading.createdAt).toLocaleString() : ''}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-gray-500">🩸 Blood Pressure</p>
+              <p className="text-lg font-bold text-gray-800">
+                {latestReading?.bloodPressure || '--'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {latestReading?.createdAt ? new Date(latestReading.createdAt).toLocaleString() : ''}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-gray-500">📈 Total Readings</p>
+              <p className="text-lg font-bold text-gray-800">{readings.length}</p>
             </div>
           </div>
 
@@ -1317,41 +1564,52 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             <h4 className="text-xs font-medium text-gray-700 mb-2">{t.healthStatistics}</h4>
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center">
-                <p className="text-xs text-gray-500">{t.avg}</p>
-                <p className="text-sm font-bold text-gray-800">{avgHydration}%</p>
+                <p className="text-xs text-gray-500">Avg HR</p>
+                <p className="text-sm font-bold text-gray-800">{avgHR} BPM</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">{t.min}</p>
-                <p className="text-sm font-bold text-red-500">{minHydration}%</p>
+                <p className="text-xs text-gray-500">Avg SpO₂</p>
+                <p className="text-sm font-bold text-gray-800">{avgSpO2}%</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">{t.max}</p>
-                <p className="text-sm font-bold text-green-500">{maxHydration}%</p>
+                <p className="text-xs text-gray-500">Avg BP</p>
+                <p className="text-sm font-bold text-gray-800">{avgBP}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Full History Chart */}
+        {/* Health History Chart */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.thirtyDayHistory}</h3>
-          <SimpleChart data={history} color="#3b82f6" />
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Blood Pressure History</h3>
+          {chartData.length > 1 ? (
+            <SimpleChart data={chartData} color="#8b5cf6" />
+          ) : (
+            <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
+          )}
         </div>
 
         {/* Recent Alerts */}
-        {patientNotifications.length > 0 && (
+        {readings.some((r) => (r.heartRate !== null && (r.heartRate < 50 || r.heartRate > 120))) && (
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
               <AlertTriangle className="w-4 h-4 text-amber-500 mr-2" />
               {t.recentAlerts}
             </h3>
             <div className="space-y-2">
-              {patientNotifications.map((n) => (
-                <div key={n.id} className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs font-medium text-gray-800">{n.title}</p>
-                  <p className="text-xs text-gray-500">{n.message}</p>
-                </div>
-              ))}
+              {readings
+                .filter((r) => r.heartRate !== null && (r.heartRate < 50 || r.heartRate > 120))
+                .slice(0, 5)
+                .map((r, i) => (
+                  <div key={r.id || i} className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs font-medium text-gray-800">
+                      ❤️ Heart Rate: {r.heartRate} BPM
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
+                    </p>
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -1365,7 +1623,9 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
           <div className="space-y-2">
             <div className="flex justify-between py-2 border-b border-gray-100">
               <span className="text-xs text-gray-600">{t.lastCheckup}</span>
-              <span className="text-xs text-gray-800">2 weeks ago</span>
+              <span className="text-xs text-gray-800">
+                {latestReading?.createdAt ? new Date(latestReading.createdAt).toLocaleDateString() : '--'}
+              </span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-100">
               <span className="text-xs text-gray-600">{t.doctor_placeholder}</span>
@@ -1373,7 +1633,9 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             </div>
             <div className="flex justify-between py-2">
               <span className="text-xs text-gray-600">{t.status}</span>
-              <span className={`text-xs font-medium capitalize ${statusColor}`}>{statusText}</span>
+              <span className="text-xs font-medium text-gray-800">
+                {latestReading ? 'Active' : 'No readings'}
+              </span>
             </div>
           </div>
         </div>
@@ -1438,6 +1700,89 @@ const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
 // ─── USERS PAGE (ADMIN) ────────────────────────────────────────────────────────
 const UsersPage = ({ onBack, onNavigate, language, setLanguage }) => {
   const t = translations[language];
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const { data } = await getUsers();
+        setUsers(Array.isArray(data) ? data : []);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+        setError('Failed to load users');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const getRoleBadge = (role) => {
+    const colors = {
+      patient: 'bg-blue-100 text-blue-600',
+      doctor: 'bg-green-100 text-green-600',
+      admin: 'bg-purple-100 text-purple-600',
+    };
+    const labels = {
+      patient: t.patient,
+      doctor: t.doctor,
+      admin: t.admin,
+    };
+    return (
+      <span className={`text-xs px-2 py-1 rounded-full ${colors[role] || 'bg-gray-100 text-gray-600'}`}>
+        {labels[role] || role}
+      </span>
+    );
+  };
+
+  const getStatusBadge = (status) => {
+    const isActive = status === 'active';
+    return (
+      <span className={`text-xs px-2 py-1 rounded-full ${isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`}>
+        {isActive ? 'Active' : 'Inactive'}
+      </span>
+    );
+  };
+
+  const patients = users.filter((u) => u.role === 'patient');
+  const doctors = users.filter((u) => u.role === 'doctor');
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="bg-white shadow-sm p-4 flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.userManagement}</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="bg-white shadow-sm p-4 flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.userManagement}</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -1453,46 +1798,58 @@ const UsersPage = ({ onBack, onNavigate, language, setLanguage }) => {
 
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-xs font-medium text-gray-500 mb-2">{t.patients}</h3>
           <div className="space-y-2 mb-4">
-            {mockPatients.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => onNavigate("patient-detail", p.id)}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-              >
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={`https://i.pravatar.cc/150?img=${p.id === "p1" ? 1 : p.id === "p2" ? 5 : 8}`}
-                    alt={p.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                    <p className="text-xs text-gray-500">Age: {p.age}</p>
+            {patients.map((u) => {
+              const patientId = u.patientProfile?.id || u.id;
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => onNavigate("patient-detail", patientId)}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-gray-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{u.name || u.email}</p>
+                      <p className="text-xs text-gray-500">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {getRoleBadge(u.role)}
+                    {getStatusBadge(u.status)}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-800">{Math.round(p.hydrationLevel)}%</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    p.status === "low" ? "bg-red-100 text-red-600" : p.status === "high" ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
-                  }`}>
-                    {p.status === "low" ? t.low : p.status === "high" ? t.high : t.normal}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+            {patients.length === 0 && (
+              <p className="text-xs text-gray-500 text-center py-4">No patients found</p>
+            )}
           </div>
 
           <h3 className="text-xs font-medium text-gray-500 mb-2">{t.doctor}</h3>
           <div className="space-y-2">
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <img src="https://i.pravatar.cc/150?img=5" alt="Dr. Sarah" className="w-10 h-10 rounded-full" />
-              <div>
-                <p className="text-sm font-medium text-gray-800">Dr. Sarah Johnson</p>
-                <p className="text-xs text-gray-500">Internal Medicine</p>
+            {doctors.map((u) => (
+              <div key={u.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{u.name || u.email}</p>
+                    <p className="text-xs text-gray-500">{u.email}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {getRoleBadge(u.role)}
+                  {getStatusBadge(u.status)}
+                </div>
               </div>
-            </div>
+            ))}
+            {doctors.length === 0 && (
+              <p className="text-xs text-gray-500 text-center py-4">No doctors found</p>
+            )}
           </div>
         </div>
       </div>
@@ -1503,12 +1860,71 @@ const UsersPage = ({ onBack, onNavigate, language, setLanguage }) => {
 // ─── ANALYTICS PAGE ────────────────────────────────────────────────────────────
 const AnalyticsPage = ({ onBack, language, setLanguage }) => {
   const t = translations[language];
-  const [data] = useState({
-    avgHydration: 62,
-    lowHydration: 15,
-    highHydration: 8,
-    totalReadings: 1247,
+  const [data, setData] = useState({
+    avgHydration: 0,
+    lowHydration: 0,
+    highHydration: 0,
+    totalReadings: 0,
   });
+  const [readings, setReadings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const { data: readingsData } = await getHealthReadings();
+        const allReadings = Array.isArray(readingsData) ? readingsData : [];
+        setReadings(allReadings);
+
+        if (allReadings.length > 0) {
+          const hrValues = allReadings.map((r) => r.heartRate).filter((v) => v !== null);
+          const avgHR = hrValues.length ? Math.round(hrValues.reduce((a, b) => a + b, 0) / hrValues.length) : 0;
+          const lowCount = hrValues.filter((v) => v < 50).length;
+          const highCount = hrValues.filter((v) => v > 120).length;
+
+          setData({
+            avgHydration: avgHR,
+            lowHydration: Math.round((lowCount / allReadings.length) * 100),
+            highHydration: Math.round((highCount / allReadings.length) * 100),
+            totalReadings: allReadings.length,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch analytics:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="bg-white shadow-sm p-4 flex items-center">
+          <button onClick={onBack} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-semibold text-gray-800">{t.analytics}</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hrValues = readings.map((r) => r.heartRate).filter((v) => v !== null);
+  const totalWithHR = hrValues.length;
+  const normalCount = hrValues.filter((v) => v >= 50 && v <= 120).length;
+  const lowCount = hrValues.filter((v) => v < 50).length;
+  const highCount = hrValues.filter((v) => v > 120).length;
+
+  const normalPercent = totalWithHR ? Math.round((normalCount / totalWithHR) * 100) : 0;
+  const lowPercent = totalWithHR ? Math.round((lowCount / totalWithHR) * 100) : 0;
+  const highPercent = totalWithHR ? Math.round((highCount / totalWithHR) * 100) : 0;
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -1547,29 +1963,29 @@ const AnalyticsPage = ({ onBack, language, setLanguage }) => {
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="!text-black">{t.normalRange}</span>
-                <span>77%</span>
+                <span className="text-black">{t.normalRange}</span>
+                <span>{normalPercent}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: "77%" }}></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${normalPercent}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="!text-black">{t.lowRange}</span>
-                <span>15%</span>
+                <span className="text-black">{t.lowRange}</span>
+                <span>{lowPercent}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-red-500 h-2 rounded-full" style={{ width: "15%" }}></div>
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${lowPercent}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="!text-black">{t.highRange}</span>
-                <span>8%</span>
+                <span className="text-black">{t.highRange}</span>
+                <span>{highPercent}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: "8%" }}></div>
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${highPercent}%` }}></div>
               </div>
             </div>
           </div>
@@ -1587,6 +2003,16 @@ export default function App() {
   const [language, setLanguage] = useState("pt");
   const [currentPage, setCurrentPage] = useState("login");
   const { user: authUser, loading: authLoading, setUser: setAuthUser } = useAuth();
+  const navigate=useNavigate()
+
+
+    const data=useData()
+
+    useEffect(() => {
+          if(authUser && !data.pushRegistered){
+            registerPush(authUser?.id,navigate,data)
+          }
+    }, [authUser]);
 
   useEffect(() => {
     if (authUser) {
@@ -1611,7 +2037,11 @@ export default function App() {
   };
 
   const goBack = () => {
-    setCurrentPage("login");
+    if (authUser) {
+      setCurrentPage(authUser.role);
+    } else {
+      setCurrentPage("login");
+    }
   };
 
   if (authLoading) {
@@ -1625,6 +2055,10 @@ export default function App() {
   const user = authUser;
 
   const renderPage = () => {
+
+
+    
+
     const commonProps = { language, setLanguage };
 
     if (!user) {
@@ -1635,7 +2069,10 @@ export default function App() {
           return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
       }
     }
+   
+  
 
+  
     switch (currentPage) {
       case "patient":
         return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;

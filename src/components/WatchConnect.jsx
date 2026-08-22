@@ -412,7 +412,7 @@ export default function WatchConnect({ onHealthUpdate, onDisconnect, savedReadin
 
       {status && <p className="text-xs text-gray-600 mb-2">Status: <strong>{status}</strong></p>}
 
-      <div className="space-y-2">
+      <div className="space-y-2 text-black">
         {devices.map(device => (
           <div key={device.deviceId} className="border rounded p-3 flex justify-between items-center">
             <div>
