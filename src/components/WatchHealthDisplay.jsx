@@ -251,7 +251,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll, language = "en", set
           </div>
         </div>
         {chartData.length > 1 ? (
-          <HealthChart data={chartData} color={chartColor} type={chartType} showLabels={false} />
+          <HealthChart data={chartData} color={chartColor} type={chartType} showLabels={false} colorBy={chartMetric === "heartRate" ? "heartRate" : undefined} />
         ) : (
           <p className="text-xs text-gray-500 text-center py-8">{t.notEnoughData}</p>
         )}

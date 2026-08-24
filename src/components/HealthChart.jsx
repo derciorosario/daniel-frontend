@@ -10,6 +10,39 @@ import {
   CartesianGrid,
 } from "recharts";
 
+const getColorByValue = (value, colorBy) => {
+  if (colorBy === "heartRate") {
+    if (value > 120) return "#ef4444";
+    if (value >= 101) return "#f59e0b";
+    if (value >= 60) return "#22c55e";
+    return "#3b82f6";
+  }
+  return null;
+};
+
+const CustomDot = (props) => {
+  const { cx, cy, payload, colorBy } = props;
+  const fill = getColorByValue(payload.value, colorBy) || props.fill || "#3b82f6";
+  return <circle cx={cx} cy={cy} r={5} fill={fill} stroke={fill} strokeWidth={2} />;
+};
+
+const CustomBar = (props) => {
+  const { x, y, width, height, payload, colorBy } = props;
+  const fill = getColorByValue(payload.value, colorBy) || props.fill || "#3b82f6";
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={fill}
+      opacity="0.85"
+      rx="4"
+      ry="4"
+    />
+  );
+};
+
 const HealthChart = ({
   data = [],
   color = "#3b82f6",
@@ -17,6 +50,7 @@ const HealthChart = ({
   className = "",
   height = "300px",
   showLabels = true,
+  colorBy,
 }) => {
   const chartData = data.map((d) => ({
     name: showLabels ? d.time : "",
@@ -42,7 +76,12 @@ const HealthChart = ({
                 fontSize: "12px",
               }}
             />
-            <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} />
+            <Bar
+              dataKey="value"
+              radius={[4, 4, 0, 0]}
+              shape={colorBy ? <CustomBar colorBy={colorBy} /> : undefined}
+              fill={color}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -72,7 +111,11 @@ const HealthChart = ({
             dataKey="value"
             stroke={color}
             strokeWidth={2}
-            dot={{ fill: color, strokeWidth: 2, r: 4 }}
+            dot={
+              colorBy
+                ? <CustomDot colorBy={colorBy} />
+                : { fill: color, strokeWidth: 2, r: 4 }
+            }
             activeDot={{ r: 6 }}
           />
         </LineChart>
