@@ -5,7 +5,7 @@ import { getHealthReadings, getPatients, createHealthReading, getPatient, getUse
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
-import SimpleChart from "../components/SimpleChart";
+import HealthChart from "../components/HealthChart";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 
@@ -1380,7 +1380,7 @@ const HistoryPage = ({ user, onBack, language, setLanguage }) => {
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.fourteenDayTrend}</h3>
-          <SimpleChart data={history} color="#3b82f6" />
+          <HealthChart data={history} color="#3b82f6" />
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1581,7 +1581,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Blood Pressure History</h3>
           {chartData.length > 1 ? (
-            <SimpleChart data={chartData} color="#8b5cf6" />
+            <HealthChart data={chartData} color="#8b5cf6" />
           ) : (
             <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
           )}
