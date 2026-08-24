@@ -6,6 +6,7 @@ import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
 import HealthChart from "../components/HealthChart";
+import EnlargedChartDialog from "../components/EnlargedChartDialog";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 
@@ -139,6 +140,22 @@ const translations = {
     lastCheckup: "Último Check-up",
     doctor_placeholder: "Médico",
     status: "Status",
+    loading: "Carregando...",
+    patientNotFound: "Paciente não encontrado",
+    failedToLoadPatientDetails: "Falha ao carregar detalhes do paciente",
+    unknown: "Desconhecido",
+    age: "Idade",
+    gender: "Gênero",
+    avgHR: "Média FC",
+    avgSpO2: "Média SpO₂",
+    avgBP: "Média PA",
+    bloodPressureHistory: "Histórico de Pressão Arterial",
+    notEnoughData: "Dados insuficientes para exibir o gráfico.",
+    heartRateAlert: "❤️ Frequência Cardíaca: {value} BPM",
+    active: "Ativo",
+    noReadingsStatus: "Sem leituras",
+    viewLarger: "Ver Maior",
+    defaultDoctorName: "Dr. Sarah Johnson",
     
     // User Management
     userManagement: "Gerenciamento de Usuários",
@@ -254,6 +271,22 @@ const translations = {
     lastCheckup: "Last Checkup",
     doctor_placeholder: "Doctor",
     status: "Status",
+    loading: "Loading...",
+    patientNotFound: "Patient not found",
+    failedToLoadPatientDetails: "Failed to load patient details",
+    unknown: "Unknown",
+    age: "Age",
+    gender: "Gender",
+    avgHR: "Avg HR",
+    avgSpO2: "Avg SpO₂",
+    avgBP: "Avg BP",
+    bloodPressureHistory: "Blood Pressure History",
+    notEnoughData: "Not enough data to show chart.",
+    heartRateAlert: "❤️ Heart Rate: {value} BPM",
+    active: "Active",
+    noReadingsStatus: "No readings",
+    viewLarger: "View Larger",
+    defaultDoctorName: "Dr. Sarah Johnson",
     
     // User Management
     userManagement: "User Management",
@@ -1408,12 +1441,13 @@ const HistoryPage = ({ user, onBack, language, setLanguage }) => {
 };
 
 // ─── PATIENT DETAIL PAGE ───────────────────────────────────────────────────────
-const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
+const PatientDetailPage = ({ patientId, onBack, language, setLanguage, unreadCount }) => {
   const t = translations[language];
   const [patient, setPatient] = useState(null);
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEnlargedChartOpen, setIsEnlargedChartOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1432,7 +1466,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
         setError(null);
       } catch (err) {
         console.error('Failed to fetch patient data:', err);
-        setError('Failed to load patient details');
+        setError(t.failedToLoadPatientDetails);
       } finally {
         setLoading(false);
       }
@@ -1453,7 +1487,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
           <h2 className="font-semibold text-gray-800">{t.patientDetails}</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-gray-500">{t.loading}</p>
         </div>
       </div>
     );
@@ -1469,13 +1503,13 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
           <h2 className="font-semibold text-gray-800">{t.patientDetails}</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-red-500">{error || 'Patient not found'}</p>
+          <p className="text-sm text-red-500">{error || t.patientNotFound}</p>
         </div>
       </div>
     );
   }
 
-  const patientName = patient.user?.name || patient.name || 'Unknown';
+  const patientName = patient.user?.name || patient.name || t.unknown;
   const patientAge = patient.age || '--';
   const patientGender = patient.gender || '--';
   const latestReading = readings[0] || null;
@@ -1518,14 +1552,14 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-800">{patientName}</h3>
-              <p className="text-sm text-gray-500">Age: {patientAge} | {patientGender}</p>
+              <p className="text-sm text-gray-500">{t.age}: {patientAge} | {t.gender}: {patientGender}</p>
             </div>
           </div>
 
           {/* Latest Health Readings */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-500">❤️ Heart Rate</p>
+              <p className="text-xs text-gray-500">{t.heartRate}</p>
               <p className="text-lg font-bold text-gray-800">
                 {latestReading?.heartRate !== null ? `${latestReading.heartRate} BPM` : '--'}
               </p>
@@ -1534,7 +1568,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
               </p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-500">🫁 SpO₂</p>
+              <p className="text-xs text-gray-500">{t.spo2}</p>
               <p className="text-lg font-bold text-gray-800">
                 {latestReading?.spo2 !== null ? `${latestReading.spo2}%` : '--'}
               </p>
@@ -1543,7 +1577,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
               </p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-500">🩸 Blood Pressure</p>
+              <p className="text-xs text-gray-500">{t.bloodPressure}</p>
               <p className="text-lg font-bold text-gray-800">
                 {latestReading?.bloodPressure || '--'}
               </p>
@@ -1552,7 +1586,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
               </p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-500">📈 Total Readings</p>
+              <p className="text-xs text-gray-500">{t.totalReadings}</p>
               <p className="text-lg font-bold text-gray-800">{readings.length}</p>
             </div>
           </div>
@@ -1562,15 +1596,15 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             <h4 className="text-xs font-medium text-gray-700 mb-2">{t.healthStatistics}</h4>
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center">
-                <p className="text-xs text-gray-500">Avg HR</p>
+                <p className="text-xs text-gray-500">{t.avgHR}</p>
                 <p className="text-sm font-bold text-gray-800">{avgHR} BPM</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Avg SpO₂</p>
+                <p className="text-xs text-gray-500">{t.avgSpO2}</p>
                 <p className="text-sm font-bold text-gray-800">{avgSpO2}%</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Avg BP</p>
+                <p className="text-xs text-gray-500">{t.avgBP}</p>
                 <p className="text-sm font-bold text-gray-800">{avgBP}</p>
               </div>
             </div>
@@ -1579,11 +1613,21 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
 
         {/* Health History Chart */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Blood Pressure History</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">{t.bloodPressureHistory}</h3>
+            {chartData.length > 1 && (
+              <button
+                onClick={() => setIsEnlargedChartOpen(true)}
+                className="text-xs text-blue-500 hover:text-blue-600 font-medium"
+              >
+                {t.viewLarger}
+              </button>
+            )}
+          </div>
           {chartData.length > 1 ? (
             <HealthChart data={chartData} color="#8b5cf6" colorBy="bloodPressure" />
           ) : (
-            <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
+            <p className="text-xs text-gray-500 text-center py-8">{t.notEnoughData}</p>
           )}
         </div>
 
@@ -1601,7 +1645,7 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
                 .map((r, i) => (
                   <div key={r.id || i} className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs font-medium text-gray-800">
-                      ❤️ Heart Rate: {r.heartRate} BPM
+                      {t.heartRateAlert.replace('{value}', r.heartRate)}
                     </p>
                     <p className="text-xs text-gray-500">
                       {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
@@ -1627,17 +1671,26 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage }) => {
             </div>
             <div className="flex justify-between py-2 border-b border-gray-100">
               <span className="text-xs text-gray-600">{t.doctor_placeholder}</span>
-              <span className="text-xs text-gray-800">{patient.user?.name || 'Dr. Sarah Johnson'}</span>
+              <span className="text-xs text-gray-800">{patient.user?.name || t.defaultDoctorName}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-xs text-gray-600">{t.status}</span>
               <span className="text-xs font-medium text-gray-800">
-                {latestReading ? 'Active' : 'No readings'}
+                {latestReading ? t.active : t.noReadingsStatus}
               </span>
             </div>
           </div>
         </div>
       </div>
+
+      <EnlargedChartDialog
+        open={isEnlargedChartOpen}
+        onClose={() => setIsEnlargedChartOpen(false)}
+        chartData={chartData}
+        chartColor="#8b5cf6"
+        chartType="line"
+        chartMetric="bloodPressure"
+      />
     </div>
   );
 };
@@ -2102,7 +2155,7 @@ export default function App() {
       case "history":
         return <HistoryPage user={user} onBack={goBack} {...commonProps} />;
       case "patient-detail":
-        return <PatientDetailPage patientId={pageParams} onBack={goBack} {...commonProps} />;
+        return <PatientDetailPage patientId={pageParams} onBack={goBack} {...commonProps} unreadCount={unreadCount} />;
       case "settings":
         return <SettingsPage user={user} onBack={goBack} onLogout={handleLogout} {...commonProps} />;
       case "users":
