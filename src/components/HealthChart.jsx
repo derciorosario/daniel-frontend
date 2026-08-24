@@ -17,6 +17,21 @@ const getColorByValue = (value, colorBy) => {
     if (value >= 60) return "#22c55e";
     return "#3b82f6";
   }
+  if (colorBy === "spo2") {
+    if (value >= 95) return "#22c55e";
+    if (value >= 90) return "#f59e0b";
+    return "#ef4444";
+  }
+  if (colorBy === "bloodPressure") {
+    if (value > 140) return "#ef4444";
+    if (value >= 90) return "#22c55e";
+    return "#3b82f6";
+  }
+  if (colorBy === "hydration") {
+    if (value < 50) return "#ef4444";
+    if (value <= 80) return "#22c55e";
+    return "#f59e0b";
+  }
   return null;
 };
 

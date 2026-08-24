@@ -52,7 +52,7 @@ const EnlargedChartDialog = ({ open, onClose, chartData, chartColor, chartType, 
 
                 <div className="flex-1 overflow-y-auto p-4">
                   {chartData.length > 1 ? (
-                     <HealthChart data={chartData} color={chartColor} type={chartType} className="h-[300px]" height="300px" showLabels colorBy={chartMetric === "heartRate" ? "heartRate" : undefined} />
+                     <HealthChart data={chartData} color={chartColor} type={chartType} className="h-[300px]" height="300px" showLabels colorBy={chartMetric === "heartRate" ? "heartRate" : chartMetric === "spo2" ? "spo2" : chartMetric === "bloodPressure" ? "bloodPressure" : undefined} />
                   ) : (
                     <p className="text-sm text-gray-500 text-center py-8">Not enough data to show chart.</p>
                   )}
