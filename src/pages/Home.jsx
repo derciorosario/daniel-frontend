@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import client, { setStoredToken, setStoredRefreshToken, isNative, getNotifications, markNotificationRead } from "../api/client";
+import client, { setStoredToken, setStoredRefreshToken, isNative, getNotifications, markNotificationRead, getUnreadNotificationCount } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import { getHealthReadings, getPatients, createHealthReading, getPatient, getUsers } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
@@ -573,15 +573,30 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage }) => {
 
 
 // ─── PATIENT DASHBOARD ─────────────────────────────────────────────────────────
-const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
+const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unreadCount }) => {
   const t = translations[language];
   const [currentHydration, setCurrentHydration] = useState(65);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [history, setHistory] = useState(generateHydrationHistory(user.id));
   const [readings, setReadings] = useState([]);
   const [liveHealth, setLiveHealth] = useState(null);
   const [loadingReadings, setLoadingReadings] = useState(true);
   const [isAllReadingsOpen, setIsAllReadingsOpen] = useState(false);
+  const [recentNotifications, setRecentNotifications] = useState([]);
+
+  const fetchRecentNotifications = async () => {
+    try {
+      const { data } = await getNotifications();
+      setRecentNotifications(Array.isArray(data) ? data.slice(0, 5) : []);
+    } catch (err) {
+      console.error('Failed to fetch recent notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentNotifications();
+    const interval = setInterval(fetchRecentNotifications, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Hydration simulation
   useEffect(() => {
@@ -596,22 +611,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
         return newLevel;
       });
     }, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch unread notification count
-  const fetchUnreadCount = async () => {
-    try {
-      const { data } = await getUnreadNotificationCount();
-      setUnreadCount(data.count || 0);
-    } catch (err) {
-      console.error('Failed to fetch unread count:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -703,6 +702,8 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
             readings={readings}
             loading={loadingReadings}
             onViewAll={() => setIsAllReadingsOpen(true)}
+            language={language}
+            setLanguage={setLanguage}
           />
         )}
 
@@ -728,7 +729,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
                     deviceId: 'simulator',
                   });
                   fetchReadings();
-                  fetchUnreadCount();
                 } catch (err) {
                   console.error('Simulation failed:', err);
                 }
@@ -749,7 +749,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
                     deviceId: 'simulator',
                   });
                   fetchReadings();
-                  fetchUnreadCount();
                 } catch (err) {
                   console.error('Simulation failed:', err);
                 }
@@ -770,7 +769,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
                     deviceId: 'simulator',
                   });
                   fetchReadings();
-                  fetchUnreadCount();
                 } catch (err) {
                   console.error('Simulation failed:', err);
                 }
@@ -791,7 +789,6 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
                     deviceId: 'simulator',
                   });
                   fetchReadings();
-                  fetchUnreadCount();
                 } catch (err) {
                   console.error('Simulation failed:', err);
                 }
@@ -807,9 +804,29 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.recentAlerts}</h3>
           <div className="space-y-2">
-            <p className="text-xs text-gray-500 text-center py-2" onClick={() => onNavigate("notifications")}>
-              {unreadCount > 0 ? `${unreadCount} notificações não lidas` : "Sem alertas recentes"}
-            </p>
+            {recentNotifications.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-2" onClick={() => onNavigate("notifications")}>
+                {unreadCount > 0 ? `${unreadCount} notificações não lidas` : "Sem alertas recentes"}
+              </p>
+            ) : (
+              recentNotifications.map((n) => (
+                <div
+                  key={n.id}
+                  onClick={() => onNavigate("notifications")}
+                  className={`p-3 rounded-lg cursor-pointer ${n.read ? "bg-white" : "bg-blue-50 border-l-4 border-blue-500"}`}
+                >
+                  <div className="flex items-start space-x-2">
+                    <div className={`p-1.5 rounded-lg ${n.priority === "high" ? "bg-red-100" : "bg-gray-100"}`}>
+                      <AlertTriangle className={`w-3.5 h-3.5 ${n.priority === "high" ? "text-red-500" : "text-gray-500"}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-800">{n.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -840,26 +857,11 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage })
 };
 
 // ─── DOCTOR DASHBOARD ──────────────────────────────────────────────────────────
-const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
+const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unreadCount }) => {
   const t = translations[language];
   const [patients, setPatients] = useState([]);
   const [readingsMap, setReadingsMap] = useState({});
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const { data } = await getUnreadNotificationCount();
-        setUnreadCount(data.count || 0);
-      } catch (err) {
-        console.error('Failed to fetch unread count:', err);
-      }
-    };
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1062,7 +1064,7 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) 
 };
 
 // ─── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
-const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) => {
+const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unreadCount }) => {
   const t = translations[language];
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -1072,22 +1074,7 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) =
     systemStatus: "operational",
   });
   const [readings, setReadings] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const { data } = await getUnreadNotificationCount();
-        setUnreadCount(data.count || 0);
-      } catch (err) {
-        console.error('Failed to fetch unread count:', err);
-      }
-    };
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1275,7 +1262,7 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage }) =
 };
 
 // ─── NOTIFICATIONS PAGE ────────────────────────────────────────────────────────
-const NotificationsPage = ({ user, onBack, language, setLanguage }) => {
+const NotificationsPage = ({ user, onBack, language, setLanguage, onNotificationMarkedRead, unreadCount }) => {
   const t = translations[language];
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1301,6 +1288,7 @@ const NotificationsPage = ({ user, onBack, language, setLanguage }) => {
     );
     try {
       await markNotificationRead(id);
+      onNotificationMarkedRead?.();
     } catch (err) {
       console.error('Failed to mark notification as read:', err);
     }
@@ -1315,7 +1303,17 @@ const NotificationsPage = ({ user, onBack, language, setLanguage }) => {
           </button>
           <h2 className="font-semibold text-gray-800">{t.notifications}</h2>
         </div>
-        <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+        <div className="flex items-center space-x-3">
+          <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
+          <div className="relative p-2 text-gray-600">
+            <Bell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto">
@@ -2002,17 +2000,29 @@ export default function App() {
   const [pageParams, setPageParams] = useState(null);
   const [language, setLanguage] = useState("pt");
   const [currentPage, setCurrentPage] = useState("login");
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user: authUser, loading: authLoading, setUser: setAuthUser } = useAuth();
   const navigate=useNavigate()
 
 
     const data=useData()
 
-    useEffect(() => {
-          if(authUser && !data.pushRegistered){
-            registerPush(authUser?.id,navigate,data)
-          }
-    }, [authUser]);
+  const refreshUnreadCount = async () => {
+    try {
+      const { data } = await getUnreadNotificationCount();
+      setUnreadCount(data.count || 0);
+    } catch (err) {
+      console.error('Failed to fetch unread count:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (authUser) {
+      refreshUnreadCount();
+      const interval = setInterval(refreshUnreadCount, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [authUser]);
 
   useEffect(() => {
     if (authUser) {
@@ -2075,13 +2085,13 @@ export default function App() {
   
     switch (currentPage) {
       case "patient":
-        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
       case "doctor":
-        return <DoctorDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+        return <DoctorDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
       case "admin":
-        return <AdminDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+        return <AdminDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
       case "notifications":
-        return <NotificationsPage user={user} onBack={goBack} {...commonProps} />;
+        return <NotificationsPage user={user} onBack={goBack} {...commonProps} onNotificationMarkedRead={refreshUnreadCount} unreadCount={unreadCount} />;
       case "history":
         return <HistoryPage user={user} onBack={goBack} {...commonProps} />;
       case "patient-detail":
@@ -2093,7 +2103,7 @@ export default function App() {
       case "analytics":
         return <AnalyticsPage onBack={goBack} {...commonProps} />;
       default:
-        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} />;
+        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
     }
   };
 

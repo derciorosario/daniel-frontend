@@ -2,7 +2,69 @@ import { useState } from "react";
 import SimpleChart from "./SimpleChart";
 import EnlargedChartDialog from "./EnlargedChartDialog";
 
-const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
+const translations = {
+  pt: {
+    healthReadings: "📊 Leituras de Saúde",
+    loading: "Carregando leituras...",
+    noReadings: "Sem leituras disponíveis.",
+    heartRate: "❤️ Frequência Cardíaca",
+    spo2: "🫁 SpO₂",
+    bloodPressure: "🩸 Pressão Arterial",
+    totalReadings: "📈 Total de Leituras",
+    latestHealthReadings: "📊 Últimas Leituras de Saúde",
+    recentReadings: "Leituras Recentes",
+    viewAll: "Ver Tudo",
+    viewLarger: "Ver Maior",
+    notEnoughData: "Dados insuficientes para exibir o gráfico.",
+    date: "Data",
+    hr: "FC",
+    spo2Label: "SpO₂",
+    bp: "PA",
+    bpm: "BPM",
+    percent: "%",
+    periodHourly: "Hora",
+    periodDaily: "Dia",
+    periodWeekly: "Semana",
+    periodMonthly: "Mês",
+    chartHR: "FC",
+    chartSpO2: "SpO₂",
+    chartBP: "PA (Sistólica)",
+    line: "Linha",
+    bar: "Barra",
+  },
+  en: {
+    healthReadings: "📊 Health Readings",
+    loading: "Loading readings...",
+    noReadings: "No readings available yet.",
+    heartRate: "❤️ Heart Rate",
+    spo2: "🫁 SpO₂",
+    bloodPressure: "🩸 Blood Pressure",
+    totalReadings: "📈 Total Readings",
+    latestHealthReadings: "📊 Latest Health Readings",
+    recentReadings: "Recent Readings",
+    viewAll: "View All",
+    viewLarger: "View Larger",
+    notEnoughData: "Not enough data to show chart.",
+    date: "Date",
+    hr: "HR",
+    spo2Label: "SpO₂",
+    bp: "BP",
+    bpm: "BPM",
+    percent: "%",
+    periodHourly: "Hourly",
+    periodDaily: "Daily",
+    periodWeekly: "Weekly",
+    periodMonthly: "Monthly",
+    chartHR: "HR",
+    chartSpO2: "SpO₂",
+    chartBP: "BP (Systolic)",
+    line: "Line",
+    bar: "Bar",
+  },
+};
+
+const WatchHealthDisplay = ({ readings, loading, onViewAll, language = "en", setLanguage }) => {
+  const t = translations[language] || translations.en;
   const [chartMetric, setChartMetric] = useState("heartRate");
   const [chartType, setChartType] = useState("line");
   const [period, setPeriod] = useState("daily");
@@ -11,8 +73,8 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">📊 Health Readings</h3>
-        <p className="text-xs text-gray-500">Loading readings...</p>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.healthReadings}</h3>
+        <p className="text-xs text-gray-500">{t.loading}</p>
       </div>
     );
   }
@@ -20,8 +82,8 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
   if (!readings || readings.length === 0) {
     return (
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">📊 Health Readings</h3>
-        <p className="text-xs text-gray-500">No readings available yet.</p>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.healthReadings}</h3>
+        <p className="text-xs text-gray-500">{t.noReadings}</p>
       </div>
     );
   }
@@ -80,36 +142,36 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
 
   const chartTitle =
     chartMetric === "heartRate"
-      ? "❤️ Heart Rate"
+      ? t.chartHR
       : chartMetric === "spo2"
-      ? "🫁 SpO₂"
-      : "🩸 Blood Pressure (Systolic)";
+      ? t.chartSpO2
+      : t.chartBP;
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">📊 Latest Health Readings</h3>
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.latestHealthReadings}</h3>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-gray-500">❤️ Heart Rate</p>
+          <p className="text-xs text-gray-500">{t.heartRate}</p>
           <p className="text-lg font-bold text-gray-800">
-            {latest.heartRate !== null ? `${latest.heartRate} BPM` : '--'}
+            {latest.heartRate !== null ? `${latest.heartRate} ${t.bpm}` : '--'}
           </p>
           <p className="text-xs text-gray-400 mt-1">
             {latest.createdAt ? new Date(latest.createdAt).toLocaleString() : ''}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-gray-500">🫁 SpO₂</p>
+          <p className="text-xs text-gray-500">{t.spo2}</p>
           <p className="text-lg font-bold text-gray-800">
-            {latest.spo2 !== null ? `${latest.spo2}%` : '--'}
+            {latest.spo2 !== null ? `${latest.spo2}${t.percent}` : '--'}
           </p>
           <p className="text-xs text-gray-400 mt-1">
             {latest.createdAt ? new Date(latest.createdAt).toLocaleString() : ''}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-gray-500">🩸 Blood Pressure</p>
+          <p className="text-xs text-gray-500">{t.bloodPressure}</p>
           <p className="text-lg font-bold text-gray-800">
             {latest.bloodPressure || '--'}
           </p>
@@ -118,7 +180,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-gray-500">📈 Total Readings</p>
+          <p className="text-xs text-gray-500">{t.totalReadings}</p>
           <p className="text-lg font-bold text-gray-800">{filteredReadings.length}</p>
         </div>
       </div>
@@ -128,9 +190,9 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
           <h4 className="text-sm font-semibold text-gray-700 mb-2">{chartTitle}</h4>
           <div className="flex flex-wrap gap-2">
             {[
-              { key: "heartRate", label: "HR" },
-              { key: "spo2", label: "SpO₂" },
-              { key: "bloodPressure", label: "BP" },
+              { key: "heartRate", label: t.chartHR },
+              { key: "spo2", label: t.chartSpO2 },
+              { key: "bloodPressure", label: t.chartBP },
             ].map((option) => (
               <button
                 key={option.key}
@@ -148,10 +210,10 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {[
-            { key: "hourly", label: "Hourly" },
-            { key: "daily", label: "Daily" },
-            { key: "weekly", label: "Weekly" },
-            { key: "monthly", label: "Monthly" },
+            { key: "hourly", label: t.periodHourly },
+            { key: "daily", label: t.periodDaily },
+            { key: "weekly", label: t.periodWeekly },
+            { key: "monthly", label: t.periodMonthly },
           ].map((option) => (
             <button
               key={option.key}
@@ -174,7 +236,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Line
+              {t.line}
             </button>
             <button
               onClick={() => setChartType("bar")}
@@ -184,14 +246,14 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Bar
+              {t.bar}
             </button>
           </div>
         </div>
         {chartData.length > 1 ? (
           <SimpleChart data={chartData} color={chartColor} type={chartType} showLabels={false} />
         ) : (
-          <p className="text-xs text-gray-500 text-center py-8">Not enough data to show chart.</p>
+          <p className="text-xs text-gray-500 text-center py-8">{t.notEnoughData}</p>
         )}
         {chartData.length > 1 && (
           <div className="mt-3 text-center">
@@ -199,7 +261,7 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
               onClick={() => setIsEnlargedChartOpen(true)}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors"
             >
-              View Larger
+              {t.viewLarger}
             </button>
           </div>
         )}
@@ -215,13 +277,13 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
       />
 
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-xs font-medium text-gray-700">Recent Readings</h4>
+        <h4 className="text-xs font-medium text-gray-700">{t.recentReadings}</h4>
         {filteredReadings.length > 6 && (
           <button
             onClick={onViewAll}
             className="text-xs text-blue-500 hover:text-blue-600 font-medium"
           >
-            View All
+            {t.viewAll}
           </button>
         )}
       </div>
@@ -230,18 +292,18 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll }) => {
         <table className="min-w-full text-xs text-gray-700">
           <thead className="bg-gray-100">
             <tr>
-              <th className="p-2 text-left text-gray-700 font-medium">Date</th>
-              <th className="p-2 text-left text-gray-700 font-medium">❤️ HR</th>
-              <th className="p-2 text-left text-gray-700 font-medium">🫁 SpO₂</th>
-              <th className="p-2 text-left text-gray-700 font-medium">🩸 BP</th>
+              <th className="p-2 text-left text-gray-700 font-medium">{t.date}</th>
+              <th className="p-2 text-left text-gray-700 font-medium">{t.hr}</th>
+              <th className="p-2 text-left text-gray-700 font-medium">{t.spo2Label}</th>
+              <th className="p-2 text-left text-gray-700 font-medium">{t.bp}</th>
             </tr>
           </thead>
           <tbody>
             {displayRecent.map((r, i) => (
               <tr key={r.id || i} className="border-t text-gray-700">
                 <td className="p-2 text-gray-700">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '--'}</td>
-                <td className="p-2 text-gray-700">{r.heartRate !== null ? `${r.heartRate} BPM` : '--'}</td>
-                <td className="p-2 text-gray-700">{r.spo2 !== null ? `${r.spo2}%` : '--'}</td>
+                <td className="p-2 text-gray-700">{r.heartRate !== null ? `${r.heartRate} ${t.bpm}` : '--'}</td>
+                <td className="p-2 text-gray-700">{r.spo2 !== null ? `${r.spo2}${t.percent}` : '--'}</td>
                 <td className="p-2 text-gray-700">{r.bloodPressure || '--'}</td>
               </tr>
             ))}
