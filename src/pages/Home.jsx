@@ -6,7 +6,7 @@ import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
 import SimpleChart from "../components/SimpleChart";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 
 import {
@@ -2003,6 +2003,7 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { user: authUser, loading: authLoading, setUser: setAuthUser } = useAuth();
   const navigate=useNavigate()
+  const [searchParams] = useSearchParams();
 
 
     const data=useData()
@@ -2029,6 +2030,12 @@ export default function App() {
       setCurrentPage(authUser.role);
     }
   }, [authUser]);
+
+  useEffect(() => {
+    if (authUser && (authUser.role === 'doctor' || authUser.role === 'admin') && searchParams.has('patient_id')) {
+      navigateTo('patient-detail', searchParams.get('patient_id'));
+    }
+  }, [authUser, searchParams]);
 
   const handleLogin = (userData) => {
     setAuthUser(userData);
