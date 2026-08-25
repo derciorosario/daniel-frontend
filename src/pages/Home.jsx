@@ -8,6 +8,7 @@ import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
 import HealthChart from "../components/HealthChart";
 import EnlargedChartDialog from "../components/EnlargedChartDialog";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 
 import {
@@ -36,6 +37,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe,
+  Monitor,
+  Server,
+  Cpu,
+  HardDrive,
+  Wifi,
+  Lock,
+  Key,
+  Database,
+  Zap,
+  LayoutDashboard,
+  Sidebar,
 } from "lucide-react";
 import RegisterPage from "./Register";
 import { useData } from "../contexts/DataContext";
@@ -45,7 +57,7 @@ import { registerPush } from "../services/push";
 const translations = {
   pt: {
     // Common
-    appName: "HydraWatch",
+    appName: "ScanWatch",
     subtitle: "Monitoramento Inteligente de Saúde",
     signIn: "Entrar",
     register: "Criar Conta",
@@ -119,6 +131,24 @@ const translations = {
     bluetoothConnections: "Conexões Bluetooth",
     unresolvedAlerts: "Alertas Não Resolvidos",
     avgMeasurementsPerUser: "Média de Medições por Usuário",
+    totalAdmins: "Total de Administradores",
+    totalHospitals: "Hospitais / Clínicas",
+    serverUptime: "Uptime do Servidor",
+    apiResponseTime: "Tempo de Resposta da API",
+    databaseSize: "Tamanho da Base de Dados",
+    activeSessions: "Sessões Ativas",
+    dataProcessed: "Dados Processados Hoje",
+    errorRate: "Taxa de Erro",
+    systemLoad: "Carga do Sistema",
+    networkStatus: "Status da Rede",
+    securityStatus: "Status de Segurança",
+    backups: "Backups",
+    lastBackup: "Último Backup",
+    failedLogins: "Logins Falhados",
+    auditLogs: "Logs de Auditoria",
+    storageUsed: "Armazenamento Usado",
+    cpuUsage: "Uso de CPU",
+    memoryUsage: "Uso de Memória",
     today: "Hoje",
     thisWeek: "Esta Semana",
     batteryLevel: "Bateria",
@@ -194,6 +224,28 @@ const translations = {
     totalReadings: "Total de Leituras",
     lastReading: "Última Leitura",
     
+    // Watch Connect
+    watchConnected: "⌚ Relógio Conectado",
+    disconnect: "Desconectar",
+    savedHealthData: "💾 Dados de Saúde Guardados",
+    lastSaved: "Última gravação:",
+    connectSmartwatch: "⌚ Conectar Smartwatch",
+    readyToScan: "Pronto para procurar dispositivos BLE.",
+    initializingBluetooth: "A inicializar Bluetooth...",
+    scanDevices: "Procurar Dispositivos",
+    stopScan: "Parar Procura",
+    connectingTo: "A conectar a",
+    connected: "Conectado",
+    connect: "Conectar",
+    unnamedDevice: "Dispositivo Sem Nome",
+    heartRateBPM: "❤️ Freq. Cardíaca",
+    spo2Percent: "🫁 SpO₂",
+    bloodPressureLabel: "🩸 Pressão Arterial",
+    battery: "🔋 Bateria",
+    lastUpdated: "Última atualização:",
+    hr: "FC",
+    bp: "PA",
+    
     // Language
     language: "Idioma",
     portuguese: "Português",
@@ -201,7 +253,7 @@ const translations = {
   },
   en: {
     // Common
-    appName: "HydraWatch",
+    appName: "ScanWatch",
     subtitle: "Smart Healthcare Monitoring",
     signIn: "Sign In",
     register: "Create Account",
@@ -275,6 +327,24 @@ const translations = {
     bluetoothConnections: "Bluetooth Connections",
     unresolvedAlerts: "Unresolved Alerts",
     avgMeasurementsPerUser: "Avg Measurements per User",
+    totalAdmins: "Total Administrators",
+    totalHospitals: "Hospitals / Clinics",
+    serverUptime: "Server Uptime",
+    apiResponseTime: "API Response Time",
+    databaseSize: "Database Size",
+    activeSessions: "Active Sessions",
+    dataProcessed: "Data Processed Today",
+    errorRate: "Error Rate",
+    systemLoad: "System Load",
+    networkStatus: "Network Status",
+    securityStatus: "Security Status",
+    backups: "Backups",
+    lastBackup: "Last Backup",
+    failedLogins: "Failed Logins",
+    auditLogs: "Audit Logs",
+    storageUsed: "Storage Used",
+    cpuUsage: "CPU Usage",
+    memoryUsage: "Memory Usage",
     today: "Today",
     thisWeek: "This Week",
     batteryLevel: "Battery",
@@ -349,6 +419,28 @@ const translations = {
     noReadings: "No readings available",
     totalReadings: "Total Readings",
     lastReading: "Last Reading",
+    
+    // Watch Connect
+    watchConnected: "⌚ Watch Connected",
+    disconnect: "Disconnect",
+    savedHealthData: "💾 Saved Health Data",
+    lastSaved: "Last saved:",
+    connectSmartwatch: "⌚ Connect Smartwatch",
+    readyToScan: "Ready to scan for BLE devices.",
+    initializingBluetooth: "Initializing Bluetooth...",
+    scanDevices: "Scan Devices",
+    stopScan: "Stop Scan",
+    connectingTo: "Connecting to",
+    connected: "Connected",
+    connect: "Connect",
+    unnamedDevice: "Unnamed Device",
+    heartRateBPM: "❤️ Heart Rate",
+    spo2Percent: "🫁 SpO₂",
+    bloodPressureLabel: "🩸 Blood Pressure",
+    battery: "🔋 Battery",
+    lastUpdated: "Last updated:",
+    hr: "HR",
+    bp: "BP",
     
     // Language
     language: "Language",
@@ -512,26 +604,26 @@ const LanguageSelector = ({ language, setLanguage, t }) => {
 };
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
-const LoginPage = ({ onLogin, onNavigate, language, setLanguage }) => {
+const testCredentials = {
+  patient: { email: "john.smith@email.com", password: "patient123" },
+  doctor: { email: "sarah.johnson@hospital.com", password: "doctor123" },
+  admin: { email: "admin@healthsystem.com", password: "admin123" }
+};
+
+const LoginPage = ({ onLogin, onNavigate, language, setLanguage, selectedRole, onRoleSelect }) => {
   const t = translations[language];
-  const [selectedRole, setSelectedRole] = useState("patient");
-  const [email, setEmail] = useState("john.smith@email.com");
-  const [password, setPassword] = useState("patient123");
+  const [email, setEmail] = useState(testCredentials[selectedRole].email);
+  const [password, setPassword] = useState(testCredentials[selectedRole].password);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
- 
-
-  const testCredentials = {
-    patient: { email: "john.smith@email.com", password: "patient123" },
-    doctor: { email: "sarah.johnson@hospital.com", password: "doctor123" },
-    admin: { email: "admin@healthsystem.com", password: "admin123" }
-  };
+  useEffect(() => {
+    setEmail(testCredentials[selectedRole].email);
+    setPassword(testCredentials[selectedRole].password);
+  }, [selectedRole]);
 
   const handleRoleSelect = (role) => {
-    setSelectedRole(role);
-    setEmail(testCredentials[role].email);
-    setPassword(testCredentials[role].password);
+    onRoleSelect(role);
     setError("");
   };
 
@@ -564,6 +656,148 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage }) => {
       setLoading(false);
     }
   };
+
+  if (selectedRole === "admin") {
+    return (
+      <div className="min-h-screen flex">
+        {/* Left Sidebar */}
+        <div className="w-1/2 bg-gray-900 text-white p-8 flex flex-col justify-between hidden md:flex">
+          <div>
+            <div className="flex items-center space-x-3 mb-8">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                <Shield className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">{t.appName}</h1>
+                <p className="text-xs text-gray-400">{t.subtitle}</p>
+              </div>
+            </div>
+            <p className="text-gray-400 text-sm mb-8">Administrator Portal</p>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Monitor className="w-4 h-4 text-blue-400" />
+                </div>
+                <span className="text-sm text-gray-300">Desktop-Class Interface</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Server className="w-4 h-4 text-green-400" />
+                </div>
+                <span className="text-sm text-gray-300">System Health Monitoring</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Database className="w-4 h-4 text-purple-400" />
+                </div>
+                <span className="text-sm text-gray-300">Real-Time Analytics</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-amber-400" />
+                </div>
+                <span className="text-sm text-gray-300">Enterprise Security</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Users className="w-4 h-4 text-sky-400" />
+                </div>
+                <span className="text-sm text-gray-300">User Management</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            <div className="flex items-center space-x-2 mb-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>All Systems Operational</span>
+            </div>
+            <p>v2.4.1 • Build 2024.01</p>
+          </div>
+        </div>
+
+        {/* Right Form */}
+        <div className="flex-1 bg-white p-8 flex flex-col justify-center">
+          <div className="max-w-md mx-auto w-full">
+            <div className="md:hidden flex items-center space-x-3 mb-8">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-gray-800">{t.appName}</h1>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Admin Login</h2>
+            <p className="text-sm text-gray-500 mb-6">Sign in to the administrator dashboard</p>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t.email}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="admin@healthsystem.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t.password}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <div className="flex space-x-2 mt-4">
+                {["patient", "doctor", "admin"].map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => handleRoleSelect(role)}
+                    className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      selectedRole === role
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {role === "patient" && t.patient}
+                    {role === "doctor" && t.doctor}
+                    {role === "admin" && t.admin}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors mt-6 disabled:bg-blue-300 disabled:cursor-not-allowed"
+              >
+                {loading ? "A entrar..." : t.signIn}
+              </button>
+            </form>
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => onNavigate("register")}
+                className="text-sm text-blue-500 hover:text-blue-600"
+              >
+                {t.noAccount} {t.register}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 overflow-y-auto">
@@ -774,12 +1008,28 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, u
       <div className="flex-1 p-4 overflow-y-auto">
         {/* Watch / Health Readings */}
         {isNative ? (
+        
+          <div>
+
           <WatchConnect
             onHealthUpdate={handleHealthUpdate}
             onDisconnect={handleDisconnect}
             savedReadings={readings}
             onSaveReading={handleSaveReading}
+            language={language}
           />
+
+
+          <WatchHealthDisplay
+            hideTotals={true}
+            readings={readings}
+            loading={loadingReadings}
+            onViewAll={() => setIsAllReadingsOpen(true)}
+            language={language}
+            setLanguage={setLanguage}
+          />
+
+          </div>
         ) : (
           <WatchHealthDisplay
             readings={readings}
@@ -922,7 +1172,7 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, u
         </button>
         <button
           onClick={() => onNavigate("history")}
-          className="flex flex-col items-center text-gray-400"
+          className="flex hidden flex-col items-center text-gray-400"
         >
           <BarChart3 className="w-6 h-6" />
           <span className="text-xs mt-1">{t.history}</span>
@@ -994,7 +1244,7 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage, un
       {/* Header */}
       <div className="bg-white shadow-sm p-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full" />
+         
           <div>
             <h2 className="font-semibold text-gray-800">{user.name}</h2>
             <p className="text-xs text-gray-500">{user.specialization || t.doctor}</p>
@@ -1129,7 +1379,7 @@ const DoctorDashboard = ({ user, onLogout, onNavigate, language, setLanguage, un
         </button>
         <button
           onClick={() => onNavigate("analytics")}
-          className="flex flex-col items-center text-gray-400"
+          className="flex hidden flex-col items-center text-gray-400"
         >
           <BarChart3 className="w-6 h-6" />
           <span className="text-xs mt-1">{t.analytics}</span>
@@ -1190,6 +1440,24 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unr
     bluetoothConnections: 0,
     unresolvedAlerts: 0,
     avgMeasurementsPerUser: 0,
+    totalAdmins: 0,
+    totalHospitals: 3,
+    serverUptime: "99.98%",
+    apiResponseTime: "45ms",
+    databaseSize: "2.4 GB",
+    activeSessions: 12,
+    dataProcessed: "1.2 GB",
+    errorRate: "0.02%",
+    systemLoad: "34%",
+    networkStatus: "operational",
+    securityStatus: "secure",
+    backups: 7,
+    lastBackup: "2h ago",
+    failedLogins: 3,
+    auditLogs: 1240,
+    storageUsed: "68%",
+    cpuUsage: "34%",
+    memoryUsage: "62%",
   });
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1244,6 +1512,7 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unr
         const bluetoothConnections = Math.floor(Math.random() * 15) + 5;
         const newUsers = Math.floor(Math.random() * 5) + 1;
         const unresolvedAlerts = heartRateAlerts.length;
+        const totalAdmins = usersData.filter((u) => u.role === 'admin').length;
 
         setStats({
           totalUsers,
@@ -1273,6 +1542,24 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unr
           bluetoothConnections,
           unresolvedAlerts,
           avgMeasurementsPerUser,
+          totalAdmins,
+          totalHospitals: 3,
+          serverUptime: "99.98%",
+          apiResponseTime: `${Math.floor(Math.random() * 50) + 20}ms`,
+          databaseSize: `${(Math.random() * 3 + 1).toFixed(1)} GB`,
+          activeSessions: Math.floor(Math.random() * 20) + 5,
+          dataProcessed: `${(Math.random() * 2 + 0.5).toFixed(1)} GB`,
+          errorRate: `${(Math.random() * 0.1).toFixed(3)}%`,
+          systemLoad: `${Math.floor(Math.random() * 60) + 10}%`,
+          networkStatus: "operational",
+          securityStatus: "secure",
+          backups: Math.floor(Math.random() * 10) + 1,
+          lastBackup: `${Math.floor(Math.random() * 12) + 1}h ago`,
+          failedLogins: Math.floor(Math.random() * 8),
+          auditLogs: Math.floor(Math.random() * 2000) + 500,
+          storageUsed: `${Math.floor(Math.random() * 40) + 40}%`,
+          cpuUsage: `${Math.floor(Math.random() * 60) + 10}%`,
+          memoryUsage: `${Math.floor(Math.random() * 50) + 30}%`,
         });
       } catch (err) {
         console.error('Failed to fetch admin stats:', err);
@@ -1291,7 +1578,7 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unr
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50">
+      <div className="flex flex-col h-screen bg-gray-100">
         <div className="bg-white shadow-sm p-4 flex items-center">
           <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mr-3">
             <Shield className="w-6 h-6 text-white" />
@@ -1299,16 +1586,16 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unr
           <h2 className="font-semibold text-gray-800">{t.administrator}</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-gray-500">Loading dashboard...</p>
+          <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm p-4 flex justify-between items-center">
+    <div className="flex flex-col h-screen bg-gray-100">
+      {/* Top Header */}
+      <div className="bg-white shadow-sm p-4 flex justify-between items-center z-10">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
             <Shield className="w-6 h-6 text-white" />
@@ -1337,141 +1624,162 @@ const AdminDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unr
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4">
-        {/* Section: Overview */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">📊 {t.overview}</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon="❤️" label={t.healthMeasurements} value={stats.healthMeasurements} color="text-red-500" bg="bg-red-50" />
-            <MetricCard icon="👥" label={t.totalUsers} value={stats.totalUsers} color="text-blue-500" bg="bg-blue-50" />
-            <MetricCard icon="📈" label={t.totalReadings} value={stats.totalReadings} color="text-indigo-500" bg="bg-indigo-50" />
-            <MetricCard icon="🚨" label={t.alerts} value={stats.activeAlerts} color="text-amber-500" bg="bg-amber-50" />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
+          <div className="p-4 space-y-1">
+            <button className="w-full flex items-center space-x-3 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg">
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="text-sm font-medium">{t.overview}</span>
+            </button>
+            <button
+              onClick={() => onNavigate("users")}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">{t.users}</span>
+            </button>
+            <button
+              onClick={() => onNavigate("analytics")}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-sm font-medium">{t.analytics}</span>
+            </button>
+            <button
+              onClick={() => onNavigate("settings")}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-sm font-medium">{t.settings}</span>
+            </button>
           </div>
-        </div>
-
-        {/* Section: Health Records */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">❤️ Health Records</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon="❤️" label={t.heartRateRecords} value={stats.heartRateRecords} color="text-red-500" bg="bg-red-50" />
-            <MetricCard icon="🩸" label={t.bloodPressureRecords} value={stats.bloodPressureRecords} color="text-purple-500" bg="bg-purple-50" />
-            <MetricCard icon="🫁" label={t.spo2Records} value={stats.spo2Records} color="text-sky-500" bg="bg-sky-50" />
-            <MetricCard icon="📊" label={t.avgMeasurementsPerUser} value={stats.avgMeasurementsPerUser} color="text-gray-600" bg="bg-gray-50" />
-          </div>
-        </div>
-
-        {/* Section: Users & Devices */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">👥 Users & Devices</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon="🟢" label={t.onlineDevices} value={stats.onlineDevices} color="text-emerald-500" bg="bg-emerald-50" />
-            <MetricCard icon="🆕" label={t.newUsers} value={stats.newUsers} color="text-green-500" bg="bg-green-50" />
-            <MetricCard icon="📡" label={t.bluetoothConnections} value={stats.bluetoothConnections} color="text-blue-500" bg="bg-blue-50" />
-            <MetricCard icon="🔋" label={t.lowBatteryDevices} value={stats.lowBatteryDevices} color="text-amber-500" bg="bg-amber-50" />
-          </div>
-        </div>
-
-        {/* Section: Sync & Activity */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">🔄 Sync & Activity</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon="✅" label={t.successfulSyncs} value={stats.successfulSyncs} color="text-green-500" bg="bg-green-50" />
-            <MetricCard icon="❌" label={t.failedSyncs} value={stats.failedSyncs} color="text-red-500" bg="bg-red-50" />
-            <MetricCard icon="👣" label={t.stepsRecorded} value={stats.stepsRecorded.toLocaleString()} color="text-orange-500" bg="bg-orange-50" />
-            <MetricCard icon="💤" label={t.sleepRecords} value={stats.sleepRecords} color="text-indigo-500" bg="bg-indigo-50" />
-          </div>
-        </div>
-
-        {/* Section: Averages */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">📈 Averages</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <MetricCard icon="❤️" label={t.avgHeartRate} value={`${stats.avgHeartRate}`} sub="BPM" color="text-red-500" bg="bg-red-50" />
-            <MetricCard icon="🫁" label={t.avgSpO2} value={`${stats.avgSpO2}`} sub="%" color="text-sky-500" bg="bg-sky-50" />
-            <MetricCard icon="🩸" label={t.avgSystolic} value={`${stats.avgSystolic}`} sub="mmHg" color="text-purple-500" bg="bg-purple-50" />
-          </div>
-        </div>
-
-        {/* Section: System Status */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.systemStatus}</h3>
-          <div className="flex items-center justify-between">
+          <div className="mt-auto p-4 border-t border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-800 capitalize">{stats.systemStatus === "operational" ? t.operational : stats.systemStatus}</span>
-            </div>
-            <div className="flex items-center space-x-4 text-xs text-gray-500">
-              <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> API</span>
-              <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> DB</span>
-              <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> BT</span>
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                <Shield className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-800">Admin</p>
+                <p className="text-[10px] text-gray-500">Super Admin</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section: Recent Alerts */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-            <AlertTriangle className="w-4 h-4 text-amber-500 mr-2" />
-            {t.systemAlerts}
-          </h3>
-          <div className="space-y-2">
-            {[...alertReadings, ...lowSpO2Readings, ...abnormalBPReadings, ...criticalReadingsList].length > 0 ? (
-              [...alertReadings, ...lowSpO2Readings, ...abnormalBPReadings, ...criticalReadingsList]
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .slice(0, 6)
-                .map((r, i) => {
-                  let label = '';
-                  let colorClass = 'text-amber-500';
-                  if (r.heartRate !== null && (r.heartRate < 50 || r.heartRate > 120)) {
-                    label = `❤️ Heart Rate: ${r.heartRate} BPM`;
-                    colorClass = r.heartRate < 40 || r.heartRate > 150 ? 'text-red-500' : 'text-amber-500';
-                  } else if (r.spo2 !== null && r.spo2 < 90) {
-                    label = `🫁 SpO₂: ${r.spo2}%`;
-                    colorClass = 'text-red-500';
-                  } else if (r.systolic !== null && (r.systolic > 140 || r.systolic < 90)) {
-                    label = `🩸 BP: ${r.bloodPressure || r.systolic}`;
-                    colorClass = 'text-amber-500';
-                  }
-                  return (
-                    <div key={r.id || i} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
-                      <AlertTriangle className={`w-4 h-4 ${colorClass} mt-0.5`} />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-gray-800">{label}</p>
-                        <p className="text-xs text-gray-500">
-                          {r.user?.name || 'Unknown'} - {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
-                        </p>
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard icon="👥" label={t.totalUsers} value={stats.totalUsers} color="text-blue-600" bg="bg-white" />
+            <MetricCard icon="📈" label={t.totalReadings} value={stats.totalReadings} color="text-indigo-600" bg="bg-white" />
+            <MetricCard icon="❤️" label={t.healthMeasurements} value={stats.healthMeasurements} color="text-red-600" bg="bg-white" />
+            <MetricCard icon="🚨" label={t.alerts} value={stats.activeAlerts} color="text-amber-600" bg="bg-white" />
+            <MetricCard icon="👨‍⚕️" label={t.totalDoctors} value={stats.totalDoctors} color="text-emerald-600" bg="bg-white" />
+            <MetricCard icon="🛡️" label={t.totalAdmins} value={stats.totalAdmins} color="text-purple-600" bg="bg-white" />
+            <MetricCard icon="🏥" label={t.totalHospitals} value={stats.totalHospitals} color="text-sky-600" bg="bg-white" />
+            <MetricCard icon="👤" label={t.totalPatients} value={stats.totalPatients} color="text-pink-600" bg="bg-white" />
+          </div>
+
+          {/* System Metrics */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">🖥️ {t.systemStatus}</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard icon="🟢" label={t.serverUptime} value={stats.serverUptime} color="text-green-600" bg="bg-white" />
+              <MetricCard icon="⚡" label={t.apiResponseTime} value={stats.apiResponseTime} color="text-amber-600" bg="bg-white" />
+              <MetricCard icon="💾" label={t.databaseSize} value={stats.databaseSize} color="text-purple-600" bg="bg-white" />
+              <MetricCard icon="🔗" label={t.activeSessions} value={stats.activeSessions} color="text-blue-600" bg="bg-white" />
+              <MetricCard icon="📊" label={t.dataProcessed} value={stats.dataProcessed} color="text-indigo-600" bg="bg-white" />
+              <MetricCard icon="⚠️" label={t.errorRate} value={stats.errorRate} color="text-red-600" bg="bg-white" />
+              <MetricCard icon="📟" label={t.systemLoad} value={stats.systemLoad} color="text-gray-700" bg="bg-white" />
+              <MetricCard icon="🌐" label={t.networkStatus} value={stats.networkStatus === "operational" ? t.operational : stats.networkStatus} color="text-green-600" bg="bg-white" />
+            </div>
+          </div>
+
+          {/* Security & Storage */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">🔒 Security & Storage</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard icon="🛡️" label={t.securityStatus} value={stats.securityStatus === "secure" ? "Secure" : stats.securityStatus} color="text-green-600" bg="bg-white" />
+              <MetricCard icon="💿" label={t.storageUsed} value={stats.storageUsed} color="text-blue-600" bg="bg-white" />
+              <MetricCard icon="🖥️" label={t.cpuUsage} value={stats.cpuUsage} color="text-indigo-600" bg="bg-white" />
+              <MetricCard icon="🧠" label={t.memoryUsage} value={stats.memoryUsage} color="text-purple-600" bg="bg-white" />
+              <MetricCard icon="📦" label={t.backups} value={stats.backups} color="text-emerald-600" bg="bg-white" />
+              <MetricCard icon="🕐" label={t.lastBackup} value={stats.lastBackup} color="text-gray-600" bg="bg-white" />
+              <MetricCard icon="❌" label={t.failedLogins} value={stats.failedLogins} color="text-red-600" bg="bg-white" />
+              <MetricCard icon="📋" label={t.auditLogs} value={stats.auditLogs.toLocaleString()} color="text-gray-600" bg="bg-white" />
+            </div>
+          </div>
+
+          {/* Health Averages */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">📈 Averages</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <MetricCard icon="❤️" label={t.avgHeartRate} value={`${stats.avgHeartRate}`} sub="BPM" color="text-red-600" bg="bg-white" />
+              <MetricCard icon="🫁" label={t.avgSpO2} value={`${stats.avgSpO2}`} sub="%" color="text-sky-600" bg="bg-white" />
+              <MetricCard icon="🩸" label={t.avgSystolic} value={`${stats.avgSystolic}`} sub="mmHg" color="text-purple-600" bg="bg-white" />
+            </div>
+          </div>
+
+          {/* System Status */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.systemStatus}</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-gray-800 capitalize">{stats.systemStatus === "operational" ? t.operational : stats.systemStatus}</span>
+              </div>
+              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> API</span>
+                <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> DB</span>
+                <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> BT</span>
+                <span className="flex items-center space-x-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> ML</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Alerts */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mr-2" />
+              {t.systemAlerts}
+            </h3>
+            <div className="space-y-2">
+              {[...alertReadings, ...lowSpO2Readings, ...abnormalBPReadings, ...criticalReadingsList].length > 0 ? (
+                [...alertReadings, ...lowSpO2Readings, ...abnormalBPReadings, ...criticalReadingsList]
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .slice(0, 8)
+                  .map((r, i) => {
+                    let label = '';
+                    let colorClass = 'text-amber-500';
+                    if (r.heartRate !== null && (r.heartRate < 50 || r.heartRate > 120)) {
+                      label = `❤️ Heart Rate: ${r.heartRate} BPM`;
+                      colorClass = r.heartRate < 40 || r.heartRate > 150 ? 'text-red-500' : 'text-amber-500';
+                    } else if (r.spo2 !== null && r.spo2 < 90) {
+                      label = `🫁 SpO₂: ${r.spo2}%`;
+                      colorClass = 'text-red-500';
+                    } else if (r.systolic !== null && (r.systolic > 140 || r.systolic < 90)) {
+                      label = `🩸 BP: ${r.bloodPressure || r.systolic}`;
+                      colorClass = 'text-amber-500';
+                    }
+                    return (
+                      <div key={r.id || i} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
+                        <AlertTriangle className={`w-4 h-4 ${colorClass} mt-0.5`} />
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-gray-800">{label}</p>
+                          <p className="text-xs text-gray-500">
+                            {r.user?.name || 'Unknown'} - {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-            ) : (
-              <p className="text-xs text-gray-500 text-center py-4">No active alerts</p>
-            )}
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-gray-500 text-center py-4">No active alerts</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Navigation */}
-      <div className="bg-white border-t border-gray-200 p-4 flex justify-around">
-        <button className="flex flex-col items-center text-blue-500">
-          <Shield className="w-6 h-6" />
-          <span className="text-xs mt-1">{t.overview}</span>
-        </button>
-        <button
-          onClick={() => onNavigate("users")}
-          className="flex flex-col items-center text-gray-400"
-        >
-          <Users className="w-6 h-6" />
-          <span className="text-xs mt-1">{t.users}</span>
-        </button>
-        <button
-          onClick={() => onNavigate("settings")}
-          className="flex flex-col items-center text-gray-400"
-        >
-          <Settings className="w-6 h-6" />
-          <span className="text-xs mt-1">{t.settings}</span>
-        </button>
       </div>
     </div>
   );
@@ -1882,6 +2190,22 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage, unreadCou
 const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
   const t = translations[language];
 
+  const [limits, setLimits] = useState({
+    heartRate: { critical: 120, low: 60 },
+    spo2: { critical: 90 },
+    bloodPressure: { critical: 140, low: 90 },
+  });
+
+  const updateLimit = (category, field, value) => {
+    setLimits((prev) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [field]: parseInt(value) || 0,
+      },
+    }));
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <div className="bg-white shadow-sm p-4 flex items-center justify-between">
@@ -1897,7 +2221,7 @@ const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <div className="flex items-center space-x-4 mb-4">
-            <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full" />
+           
             <div>
               <h3 className="font-medium text-gray-800">{user.name}</h3>
               <p className="text-sm text-gray-500 capitalize">{user.role === "patient" ? t.patient : user.role === "doctor" ? t.doctor : t.admin}</p>
@@ -1916,6 +2240,85 @@ const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
             <div className="flex justify-between items-center py-2">
               <span className="text-sm text-gray-600">{t.darkMode}</span>
               <span className="text-sm text-gray-800">{t.off}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-blue-800 mb-1">{language === "pt" ? "Limites de Saúde" : "Health Limits"}</h4>
+              <p className="text-xs text-blue-700 leading-relaxed">
+                {language === "pt"
+                  ? "Defina os valores limite para quando os seus sinais vitais são considerados críticos ou baixos. Estes valores serão utilizados para gerar alertas e notificações quando as medições estiverem fora dos limites normais."
+                  : "Set the threshold values for when your vital signs are considered critical or low. These values will be used to generate alerts and notifications when measurements are outside normal limits."}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-4">❤️ {t.heartRate}</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">{t.critical} ({`>`} BPM)</label>
+              <input
+                type="number"
+                value={limits.heartRate.critical}
+                onChange={(e) => updateLimit("heartRate", "critical", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">{t.low} ({`<`} BPM)</label>
+              <input
+                type="number"
+                value={limits.heartRate.low}
+                onChange={(e) => updateLimit("heartRate", "low", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-4">🫁 SpO₂</h3>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">{t.critical} ({`<`} %)</label>
+              <input
+                type="number"
+                value={limits.spo2.critical}
+                onChange={(e) => updateLimit("spo2", "critical", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-4">🩸 {t.systolic} (mmHg)</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">{t.critical} ({`>`})</label>
+              <input
+                type="number"
+                value={limits.bloodPressure.critical}
+                onChange={(e) => updateLimit("bloodPressure", "critical", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">{t.low} ({`<`})</label>
+              <input
+                type="number"
+                value={limits.bloodPressure.low}
+                onChange={(e) => updateLimit("bloodPressure", "low", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
             </div>
           </div>
         </div>
@@ -2094,12 +2497,6 @@ const UsersPage = ({ onBack, onNavigate, language, setLanguage }) => {
 // ─── ANALYTICS PAGE ────────────────────────────────────────────────────────────
 const AnalyticsPage = ({ onBack, language, setLanguage }) => {
   const t = translations[language];
-  const [data, setData] = useState({
-    avgHydration: 0,
-    lowHydration: 0,
-    highHydration: 0,
-    totalReadings: 0,
-  });
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -2110,20 +2507,6 @@ const AnalyticsPage = ({ onBack, language, setLanguage }) => {
         const { data: readingsData } = await getHealthReadings();
         const allReadings = Array.isArray(readingsData) ? readingsData : [];
         setReadings(allReadings);
-
-        if (allReadings.length > 0) {
-          const hrValues = allReadings.map((r) => r.heartRate).filter((v) => v !== null);
-          const avgHR = hrValues.length ? Math.round(hrValues.reduce((a, b) => a + b, 0) / hrValues.length) : 0;
-          const lowCount = hrValues.filter((v) => v < 50).length;
-          const highCount = hrValues.filter((v) => v > 120).length;
-
-          setData({
-            avgHydration: avgHR,
-            lowHydration: Math.round((lowCount / allReadings.length) * 100),
-            highHydration: Math.round((highCount / allReadings.length) * 100),
-            totalReadings: allReadings.length,
-          });
-        }
       } catch (err) {
         console.error('Failed to fetch analytics:', err);
       } finally {
@@ -2151,14 +2534,44 @@ const AnalyticsPage = ({ onBack, language, setLanguage }) => {
   }
 
   const hrValues = readings.map((r) => r.heartRate).filter((v) => v !== null);
-  const totalWithHR = hrValues.length;
-  const normalCount = hrValues.filter((v) => v >= 50 && v <= 120).length;
-  const lowCount = hrValues.filter((v) => v < 50).length;
-  const highCount = hrValues.filter((v) => v > 120).length;
+  const spo2Values = readings.map((r) => r.spo2).filter((v) => v !== null);
+  const bpValues = readings.map((r) => r.systolic).filter((v) => v !== null);
 
-  const normalPercent = totalWithHR ? Math.round((normalCount / totalWithHR) * 100) : 0;
-  const lowPercent = totalWithHR ? Math.round((lowCount / totalWithHR) * 100) : 0;
-  const highPercent = totalWithHR ? Math.round((highCount / totalWithHR) * 100) : 0;
+  const calcStats = (values) => {
+    if (values.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
+    return {
+      avg: Math.round(values.reduce((a, b) => a + b, 0) / values.length),
+      min: Math.min(...values),
+      max: Math.max(...values),
+      count: values.length
+    };
+  };
+
+  const hrStats = calcStats(hrValues);
+  const spo2Stats = calcStats(spo2Values);
+  const bpStats = calcStats(bpValues);
+
+  const hrLow = hrValues.filter((v) => v < 60).length;
+  const hrNormal = hrValues.filter((v) => v >= 60 && v <= 100).length;
+  const hrAttention = hrValues.filter((v) => v > 100 && v <= 120).length;
+  const hrCritical = hrValues.filter((v) => v > 120).length;
+
+  const spo2Low = spo2Values.filter((v) => v < 90).length;
+  const spo2Attention = spo2Values.filter((v) => v >= 90 && v < 95).length;
+  const spo2Normal = spo2Values.filter((v) => v >= 95).length;
+
+  const bpLow = bpValues.filter((v) => v < 90).length;
+  const bpNormal = bpValues.filter((v) => v >= 90 && v <= 140).length;
+  const bpCritical = bpValues.filter((v) => v > 140).length;
+
+  const calcPercent = (count, total) => total ? Math.round((count / total) * 100) : 0;
+
+  const displayData = [
+    { name: language === "pt" ? "Normal" : "Normal", value: 145, color: "#22c55e" },
+    { name: language === "pt" ? "Atenção" : "Attention", value: 32, color: "#f59e0b" },
+    { name: language === "pt" ? "Crítico" : "Critical", value: 18, color: "#ef4444" },
+    { name: language === "pt" ? "Baixo" : "Low", value: 12, color: "#3b82f6" },
+  ];
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -2172,55 +2585,215 @@ const AnalyticsPage = ({ onBack, language, setLanguage }) => {
         <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
       </div>
 
-      <div className="flex-1 p-4 overflow-y-auto">
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t.avgHydration}</p>
-            <p className="text-xl font-bold text-gray-800">{data.avgHydration}%</p>
+      <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        {/* Heart Rate Section */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">❤️ {t.heartRate}</h3>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.avg}</p>
+              <p className="text-lg font-bold text-gray-800">{hrStats.avg}</p>
+              <p className="text-[10px] text-gray-400">BPM</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.min}</p>
+              <p className="text-lg font-bold text-blue-600">{hrStats.min}</p>
+              <p className="text-[10px] text-gray-400">BPM</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.max}</p>
+              <p className="text-lg font-bold text-red-600">{hrStats.max}</p>
+              <p className="text-[10px] text-gray-400">BPM</p>
+            </div>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t.lowHydration}</p>
-            <p className="text-xl font-bold text-red-500">{data.lowHydration}%</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t.highHydration}</p>
-            <p className="text-xl font-bold text-amber-500">{data.highHydration}%</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500">{t.totalReadings}</p>
-            <p className="text-xl font-bold text-gray-800">{data.totalReadings}</p>
+          <div className="space-y-2">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-green-600 font-medium">{t.normalRange} (60-100)</span>
+                <span>{calcPercent(hrNormal, hrValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${calcPercent(hrNormal, hrValues.length)}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-amber-500 font-medium">Atenção (101-120)</span>
+                <span>{calcPercent(hrAttention, hrValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${calcPercent(hrAttention, hrValues.length)}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-red-500 font-medium">{t.critical} ({`>`}120)</span>
+                <span>{calcPercent(hrCritical, hrValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${calcPercent(hrCritical, hrValues.length)}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-blue-500 font-medium">{t.low} ({`<`}60)</span>
+                <span>{calcPercent(hrLow, hrValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${calcPercent(hrLow, hrValues.length)}%` }}></div>
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* SpO2 Section */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.hydrationDistribution}</h3>
-          <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">🫁 SpO₂</h3>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.avg}</p>
+              <p className="text-lg font-bold text-gray-800">{spo2Stats.avg}</p>
+              <p className="text-[10px] text-gray-400">%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.min}</p>
+              <p className="text-lg font-bold text-blue-600">{spo2Stats.min}</p>
+              <p className="text-[10px] text-gray-400">%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.max}</p>
+              <p className="text-lg font-bold text-green-600">{spo2Stats.max}</p>
+              <p className="text-[10px] text-gray-400">%</p>
+            </div>
+          </div>
+          <div className="space-y-2">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-black">{t.normalRange}</span>
-                <span>{normalPercent}%</span>
+                <span className="text-green-600 font-medium">{t.normalRange} (≥95%)</span>
+                <span>{calcPercent(spo2Normal, spo2Values.length)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${normalPercent}%` }}></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${calcPercent(spo2Normal, spo2Values.length)}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-black">{t.lowRange}</span>
-                <span>{lowPercent}%</span>
+                <span className="text-amber-500 font-medium">Atenção (90-94%)</span>
+                <span>{calcPercent(spo2Attention, spo2Values.length)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${lowPercent}%` }}></div>
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${calcPercent(spo2Attention, spo2Values.length)}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-black">{t.highRange}</span>
-                <span>{highPercent}%</span>
+                <span className="text-red-500 font-medium">{t.critical} ({`<`}90%)</span>
+                <span>{calcPercent(spo2Low, spo2Values.length)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${highPercent}%` }}></div>
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${calcPercent(spo2Low, spo2Values.length)}%` }}></div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Blood Pressure Section */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">🩸 {t.systolic}</h3>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.avg}</p>
+              <p className="text-lg font-bold text-gray-800">{bpStats.avg}</p>
+              <p className="text-[10px] text-gray-400">mmHg</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.min}</p>
+              <p className="text-lg font-bold text-blue-600">{bpStats.min}</p>
+              <p className="text-[10px] text-gray-400">mmHg</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{t.max}</p>
+              <p className="text-lg font-bold text-red-600">{bpStats.max}</p>
+              <p className="text-[10px] text-gray-400">mmHg</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-green-600 font-medium">{t.normalRange} (90-140)</span>
+                <span>{calcPercent(bpNormal, bpValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${calcPercent(bpNormal, bpValues.length)}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-red-500 font-medium">{t.critical} ({`>`}140)</span>
+                <span>{calcPercent(bpCritical, bpValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${calcPercent(bpCritical, bpValues.length)}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-blue-500 font-medium">{t.low} ({`<`}90)</span>
+                <span>{calcPercent(bpLow, bpValues.length)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${calcPercent(bpLow, bpValues.length)}%` }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pie Chart Section - Overall Distribution */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            {language === "pt" ? "Distribuição Geral de Níveis" : "Overall Levels Distribution"}
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsPieChart>
+                <Pie
+                  data={displayData.filter(item => item.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {displayData.filter(item => item.value > 0).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name) => [`${value} ${language === "pt" ? "leituras" : "readings"}`, name]}
+                />
+                <Legend />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-gray-600">{language === "pt" ? "Normal" : "Normal"}: {displayData[0].value}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+              <span className="text-gray-600">{language === "pt" ? "Atenção" : "Attention"}: {displayData[1].value}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span className="text-gray-600">{language === "pt" ? "Crítico" : "Critical"}: {displayData[2].value}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span className="text-gray-600">{language === "pt" ? "Baixo" : "Low"}: {displayData[3].value}</span>
             </div>
           </div>
         </div>
@@ -2237,6 +2810,7 @@ export default function App() {
   const [language, setLanguage] = useState("pt");
   const [currentPage, setCurrentPage] = useState("login");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedRole, setSelectedRole] = useState("patient");
   const { user: authUser, loading: authLoading, setUser: setAuthUser } = useAuth();
   const navigate=useNavigate()
   const [searchParams] = useSearchParams();
@@ -2319,7 +2893,7 @@ export default function App() {
         case "register":
           return <RegisterPage onLogin={handleLogin} onBack={goBack} {...commonProps} />;
         default:
-          return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} {...commonProps} />;
+          return <LoginPage onLogin={handleLogin} onNavigate={navigateTo} selectedRole={selectedRole} onRoleSelect={setSelectedRole} {...commonProps} />;
       }
     }
    
@@ -2350,11 +2924,17 @@ export default function App() {
     }
   };
 
+  const isAdminMode = (user?.role === 'admin') || (currentPage === 'login' && selectedRole === 'admin');
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh]">
-        {renderPage()}
-      </div>
+    <div className={isAdminMode ? "min-h-screen bg-gray-100" : "min-h-screen bg-gray-100 flex items-center justify-center p-4"}>
+      {isAdminMode ? (
+        renderPage()
+      ) : (
+        <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden h-screen max-h-screen">
+          {renderPage()}
+        </div>
+      )}
     </div>
   );
 }

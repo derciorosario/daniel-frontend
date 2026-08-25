@@ -63,7 +63,7 @@ const translations = {
   },
 };
 
-const WatchHealthDisplay = ({ readings, loading, onViewAll, language = "en", setLanguage }) => {
+const WatchHealthDisplay = ({ hideTotals,readings, loading, onViewAll, language = "en", setLanguage }) => {
   const t = translations[language] || translations.en;
   const [chartMetric, setChartMetric] = useState("heartRate");
   const [chartType, setChartType] = useState("line");
@@ -149,6 +149,8 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll, language = "en", set
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+      
+      {!hideTotals && <>
       <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.latestHealthReadings}</h3>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -185,6 +187,8 @@ const WatchHealthDisplay = ({ readings, loading, onViewAll, language = "en", set
         </div>
       </div>
 
+      
+      </>}
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
         <div className="mb-3">
           <h4 className="text-sm font-semibold text-gray-700 mb-2">{chartTitle}</h4>

@@ -35,6 +35,25 @@ const getColorByValue = (value, colorBy) => {
   return null;
 };
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const dataPoint = payload[0]?.payload;
+    const value = dataPoint?.value;
+    const displayName = dataPoint?.originalTime || dataPoint?.name || label;
+    
+    return (
+      <div
+        className="bg-white border border-gray-200 rounded-lg shadow-lg p-2"
+        style={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px" }}
+      >
+        <p className="text-gray-500 mb-1">{displayName}</p>
+        <p className="text-gray-800 font-medium">{value !== undefined && value !== null ? value : '--'}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const CustomDot = (props) => {
   const { cx, cy, payload, colorBy } = props;
   const fill = getColorByValue(payload.value, colorBy) || props.fill || "#3b82f6";
@@ -67,10 +86,27 @@ const HealthChart = ({
   showLabels = true,
   colorBy,
 }) => {
-  const chartData = data.map((d) => ({
-    name: showLabels ? d.time : "",
-    value: d.level,
-  }));
+  // Process data to ensure unique identifiers while preserving original time
+  const chartData = data.map((d, index) => {
+    // Create a unique name for the X-axis
+    let name = d.time;
+    if (showLabels) {
+      // If there are multiple entries with the same time, add index to make it unique
+      const sameTimeCount = data.filter(item => item.time === d.time).length;
+      if (sameTimeCount > 1) {
+        name = `${d.time} ${index + 1}`;
+      }
+    } else {
+      name = `${index + 1}`;
+    }
+    
+    return {
+      name: name,
+      value: d.level,
+      originalTime: d.time, // Store original time for tooltip display
+      index: index,
+    };
+  });
 
   if (type === "bar") {
     return (
@@ -85,11 +121,7 @@ const HealthChart = ({
             />
             <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} />
             <Tooltip
-              contentStyle={{
-                borderRadius: "8px",
-                border: "1px solid #e5e7eb",
-                fontSize: "12px",
-              }}
+              content={<CustomTooltip />}
             />
             <Bar
               dataKey="value"
@@ -115,11 +147,7 @@ const HealthChart = ({
           />
           <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} />
           <Tooltip
-            contentStyle={{
-              borderRadius: "8px",
-              border: "1px solid #e5e7eb",
-              fontSize: "12px",
-            }}
+            content={<CustomTooltip />}
           />
           <Line
             type="monotone"
