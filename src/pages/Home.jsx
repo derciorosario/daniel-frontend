@@ -2669,30 +2669,33 @@ const AnalyticsPage = ({ onBack, language, setLanguage }) => {
           <div className="space-y-2">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-green-600 font-medium">{t.normalRange} (≥95%)</span>
+                <span className="text-green-600 font-medium">Normal (95–100%)</span>
                 <span>{calcPercent(spo2Normal, spo2Values.length)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div className="bg-green-500 h-2 rounded-full" style={{ width: `${calcPercent(spo2Normal, spo2Values.length)}%` }}></div>
               </div>
+              <p className="text-[10px] text-gray-400 mt-1">Geralmente considerado normal</p>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-amber-500 font-medium">Atenção (90-94%)</span>
+                <span className="text-amber-500 font-medium">Atenção (90–94%)</span>
                 <span>{calcPercent(spo2Attention, spo2Values.length)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${calcPercent(spo2Attention, spo2Values.length)}%` }}></div>
               </div>
+              <p className="text-[10px] text-gray-400 mt-1">Merece atenção, especialmente se persistir</p>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-red-500 font-medium">{t.critical} ({`<`}90%)</span>
+                <span className="text-red-500 font-medium">Crítico (&lt;90%)</span>
                 <span>{calcPercent(spo2Low, spo2Values.length)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div className="bg-red-500 h-2 rounded-full" style={{ width: `${calcPercent(spo2Low, spo2Values.length)}%` }}></div>
               </div>
+              <p className="text-[10px] text-gray-400 mt-1">Leitura preocupante, confirme com oxímetro</p>
             </div>
           </div>
         </div>

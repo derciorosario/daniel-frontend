@@ -21,9 +21,9 @@ const EnlargedChartDialog = ({ open, onClose, chartData, chartColor, chartType, 
         ]
       : chartMetric === "spo2"
       ? [
-          { color: "#22c55e", label: "Normal", range: "≥95%" },
-          { color: "#f59e0b", label: "Atenção", range: "90–94%" },
-          { color: "#ef4444", label: "Crítico", range: "<90%" },
+          { color: "#22c55e", label: "Normal", range: "95–100%", desc: "Geralmente considerado normal" },
+          { color: "#f59e0b", label: "Atenção", range: "90–94%", desc: "Merece atenção, especialmente se persistir" },
+          { color: "#ef4444", label: "Crítico", range: "<90%", desc: "Leitura preocupante, confirme com oxímetro" },
         ]
       : chartMetric === "bloodPressure"
       ? [
@@ -94,10 +94,11 @@ const EnlargedChartDialog = ({ open, onClose, chartData, chartColor, chartType, 
                                 className="w-3 h-3 rounded-full shrink-0"
                                 style={{ backgroundColor: item.color }}
                               />
-                              <div className="md:ml-2">
-                                <p className="text-xs font-medium text-gray-800">{item.label}</p>
-                                <p className="text-[10px] text-gray-500">{item.range}</p>
-                              </div>
+                               <div className="md:ml-2">
+                                 <p className="text-xs font-medium text-gray-800">{item.label}</p>
+                                 <p className="text-[10px] text-gray-500">{item.range}</p>
+                                 {item.desc && <p className="text-[10px] text-gray-400">{item.desc}</p>}
+                               </div>
                             </div>
                           ))}
                         </div>
