@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import client, { setStoredToken, setStoredRefreshToken, isNative, getNotifications, markNotificationRead, getUnreadNotificationCount } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-import { getHealthReadings, getPatients, createHealthReading, getPatient, getUsers } from "../api/health";
+import { getHealthReadings, getPatients, createHealthReading, getPatient, getUsers, updateUserPhone } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
@@ -64,6 +64,7 @@ const translations = {
     name: "Nome",
     email: "E-mail",
     password: "Senha",
+    phone: "Telefone",
     patient: "Paciente",
     doctor: "Médico",
     admin: "Admin",
@@ -260,6 +261,7 @@ const translations = {
     name: "Name",
     email: "Email",
     password: "Password",
+    phone: "Phone",
     patient: "Patient",
     doctor: "Doctor",
     admin: "Admin",
@@ -614,12 +616,18 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage, selectedRole, o
   const t = translations[language];
   const [email, setEmail] = useState(testCredentials[selectedRole].email);
   const [password, setPassword] = useState(testCredentials[selectedRole].password);
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isTestUser = Object.values(testCredentials).some(
+    (tc) => tc.email === email
+  );
 
   useEffect(() => {
     setEmail(testCredentials[selectedRole].email);
     setPassword(testCredentials[selectedRole].password);
+    setPhone("");
   }, [selectedRole]);
 
   const handleRoleSelect = (role) => {
@@ -647,6 +655,14 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage, selectedRole, o
       setStoredToken(token);
       if (refreshToken) {
         setStoredRefreshToken(refreshToken);
+      }
+
+      if (phone && phone.trim()) {
+        try {
+          await updateUserPhone(phone.trim());
+        } catch (err) {
+          console.error('Failed to update phone:', err);
+        }
       }
 
       onLogin(user);
@@ -758,6 +774,20 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage, selectedRole, o
                   required
                 />
               </div>
+              {isTestUser && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t.phone}
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    placeholder="+258 84 000 0000"
+                  />
+                </div>
+              )}
               <div className="flex space-x-2 mt-4">
                 {["patient", "doctor", "admin"].map((role) => (
                   <button
@@ -846,6 +876,20 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage, selectedRole, o
             required
           />
         </div>
+        {isTestUser && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t.phone}
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              placeholder="+258 84 000 0000"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-2 mt-4">
           {["patient", "doctor", "admin"].map((role) => (

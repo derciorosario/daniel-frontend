@@ -28,6 +28,10 @@ export const updateUser = (id, data) => {
   return client.put(`/users/${id}`, data);
 };
 
+export const updateUserPhone = (phone) => {
+  return client.put('/auth/phone', { phone });
+};
+
 export const deleteUser = (id) => {
   return client.delete(`/users/${id}`);
 };
