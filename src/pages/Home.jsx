@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import client, { setStoredToken, setStoredRefreshToken, isNative, getNotifications, markNotificationRead, getUnreadNotificationCount } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-import { getHealthReadings, getPatients, createHealthReading, getPatient, getUsers, updateUserPhone } from "../api/health";
+import { getHealthReadings, getPatients, createHealthReading, getPatient, getUsers, updateUserPhone, updateUserLimits } from "../api/health";
 import WatchConnect from "../components/WatchConnect";
 import WatchHealthDisplay from "../components/WatchHealthDisplay";
 import AllHealthReadingsDialog from "../components/AllHealthReadingsDialog";
@@ -934,7 +934,7 @@ const LoginPage = ({ onLogin, onNavigate, language, setLanguage, selectedRole, o
 
 
 // ─── PATIENT DASHBOARD ─────────────────────────────────────────────────────────
-const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unreadCount }) => {
+const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, unreadCount, setAuthUser }) => {
   const t = translations[language];
   const [currentHydration, setCurrentHydration] = useState(65);
   const [history, setHistory] = useState(generateHydrationHistory(user.id));
@@ -943,6 +943,41 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, u
   const [loadingReadings, setLoadingReadings] = useState(true);
   const [isAllReadingsOpen, setIsAllReadingsOpen] = useState(false);
   const [recentNotifications, setRecentNotifications] = useState([]);
+
+  const defaultLimits = {
+    heartRate: { critical: 120, low: 60 },
+    spo2: { critical: 90, low: 95 },
+    bloodPressure: { critical: 140, low: 90 },
+  };
+
+  const [limits, setLimits] = useState(user.limits || defaultLimits);
+  const [savingLimits, setSavingLimits] = useState(false);
+  const [limitsMessage, setLimitsMessage] = useState("");
+
+  const updateLimit = (category, field, value) => {
+    setLimits((prev) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [field]: value === "" ? "" : parseInt(value) || 0,
+      },
+    }));
+  };
+
+  const handleSaveLimits = async () => {
+    setSavingLimits(true);
+    setLimitsMessage("");
+    try {
+      await updateUserLimits(limits);
+      setLimitsMessage(language === "pt" ? "Limites guardados" : "Limits saved");
+      setAuthUser({ ...user, limits });
+      setTimeout(() => setLimitsMessage(""), 3000);
+    } catch (err) {
+      setLimitsMessage(language === "pt" ? "Erro ao guardar" : "Failed to save");
+    } finally {
+      setSavingLimits(false);
+    }
+  };
 
   const fetchRecentNotifications = async () => {
     try {
@@ -1174,6 +1209,96 @@ const PatientDashboard = ({ user, onLogout, onNavigate, language, setLanguage, u
             >
               Random Reading
             </button>
+          </div>
+        </div>
+
+        {/* Health Limits */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-800">⚙️ {language === "pt" ? "Limites de Saúde" : "Health Limits"}</h3>
+            <button
+              onClick={handleSaveLimits}
+              disabled={savingLimits}
+              className="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+            >
+              {savingLimits ? (language === "pt" ? "A guardar..." : "Saving...") : (language === "pt" ? "Guardar" : "Save")}
+            </button>
+          </div>
+          {limitsMessage && (
+            <div className={`mb-3 p-2 rounded-lg text-xs ${limitsMessage.includes("guardados") || limitsMessage.includes("saved") ? "bg-green-50 border border-green-200 text-green-600" : "bg-red-50 border border-red-200 text-red-600"}`}>
+              {limitsMessage}
+            </div>
+          )}
+          <div className="space-y-3">
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 mb-2">❤️ {t.heartRate} (BPM)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">{t.critical} ({`>`})</label>
+                  <input
+                    type="number"
+                    value={limits.heartRate.critical}
+                    onChange={(e) => updateLimit("heartRate", "critical", e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">{t.low} ({`<`})</label>
+                  <input
+                    type="number"
+                    value={limits.heartRate.low}
+                    onChange={(e) => updateLimit("heartRate", "low", e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 mb-2">🫁 SpO₂ (%)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">{t.critical} ({`<`})</label>
+                  <input
+                    type="number"
+                    value={limits.spo2.critical}
+                    onChange={(e) => updateLimit("spo2", "critical", e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">{t.low} ({`<`})</label>
+                  <input
+                    type="number"
+                    value={limits.spo2.low}
+                    onChange={(e) => updateLimit("spo2", "low", e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 mb-2">🩸 {t.systolic} (mmHg)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">{t.critical} ({`>`})</label>
+                  <input
+                    type="number"
+                    value={limits.bloodPressure.critical}
+                    onChange={(e) => updateLimit("bloodPressure", "critical", e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">{t.low} ({`<`})</label>
+                  <input
+                    type="number"
+                    value={limits.bloodPressure.low}
+                    onChange={(e) => updateLimit("bloodPressure", "low", e.target.value)}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2231,23 +2356,41 @@ const PatientDetailPage = ({ patientId, onBack, language, setLanguage, unreadCou
 };
 
 // ─── SETTINGS PAGE ───────────────────────────────────────────────────────────────
-const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
+const SettingsPage = ({ user, onBack, onLogout, language, setLanguage, setAuthUser }) => {
   const t = translations[language];
 
-  const [limits, setLimits] = useState({
+  const defaultLimits = {
     heartRate: { critical: 120, low: 60 },
-    spo2: { critical: 90 },
+    spo2: { critical: 90, low: 95 },
     bloodPressure: { critical: 140, low: 90 },
-  });
+  };
+
+  const [limits, setLimits] = useState(user.limits || defaultLimits);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
   const updateLimit = (category, field, value) => {
     setLimits((prev) => ({
       ...prev,
       [category]: {
         ...prev[category],
-        [field]: parseInt(value) || 0,
+        [field]: value === "" ? "" : parseInt(value) || 0,
       },
     }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMessage("");
+    try {
+      await updateUserLimits(limits);
+      setSaveMessage(language === "pt" ? "Limites guardados com sucesso" : "Limits saved successfully");
+      setAuthUser({ ...user, limits });
+    } catch (err) {
+      setSaveMessage(language === "pt" ? "Erro ao guardar limites" : "Failed to save limits");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -2330,13 +2473,22 @@ const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
 
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">🫁 SpO₂</h3>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">{t.critical} ({`<`} %)</label>
               <input
                 type="number"
                 value={limits.spo2.critical}
                 onChange={(e) => updateLimit("spo2", "critical", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">{t.low} ({`<`} %)</label>
+              <input
+                type="number"
+                value={limits.spo2.low}
+                onChange={(e) => updateLimit("spo2", "low", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
             </div>
@@ -2366,6 +2518,20 @@ const SettingsPage = ({ user, onBack, onLogout, language, setLanguage }) => {
             </div>
           </div>
         </div>
+
+        {saveMessage && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${saveMessage.includes("sucesso") || saveMessage.includes("successfully") ? "bg-green-50 border border-green-200 text-green-600" : "bg-red-50 border border-red-200 text-red-600"}`}>
+            {saveMessage}
+          </div>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors mb-4 disabled:bg-blue-300 disabled:cursor-not-allowed"
+        >
+          {saving ? (language === "pt" ? "A guardar..." : "Saving...") : (language === "pt" ? "Guardar Limites" : "Save Limits")}
+        </button>
 
         <button
           onClick={onLogout}
@@ -2949,7 +3115,7 @@ export default function App() {
   
     switch (currentPage) {
       case "patient":
-        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
+        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} setAuthUser={setAuthUser} />;
       case "doctor":
         return <DoctorDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
       case "admin":
@@ -2961,13 +3127,13 @@ export default function App() {
       case "patient-detail":
         return <PatientDetailPage patientId={pageParams} onBack={goBack} {...commonProps} unreadCount={unreadCount} />;
       case "settings":
-        return <SettingsPage user={user} onBack={goBack} onLogout={handleLogout} {...commonProps} />;
+        return <SettingsPage user={user} onBack={goBack} onLogout={handleLogout} setAuthUser={setAuthUser} {...commonProps} />;
       case "users":
         return <UsersPage onBack={goBack} onNavigate={navigateTo} {...commonProps} />;
       case "analytics":
         return <AnalyticsPage onBack={goBack} {...commonProps} />;
       default:
-        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} />;
+        return <PatientDashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} {...commonProps} unreadCount={unreadCount} setAuthUser={setAuthUser} />;
     }
   };
 

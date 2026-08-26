@@ -32,6 +32,10 @@ export const updateUserPhone = (phone) => {
   return client.put('/auth/phone', { phone });
 };
 
+export const updateUserLimits = (limits) => {
+  return client.put('/auth/limits', { limits });
+};
+
 export const deleteUser = (id) => {
   return client.delete(`/users/${id}`);
 };
