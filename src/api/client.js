@@ -1,11 +1,11 @@
 import axios from "axios";
-export const env = "pro";
+export const env = "dev";
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 export const isNative = Capacitor.isNativePlatform();
 export const APP_VERSION="1.2"
 export const FRONTEND_URL = "https://scanwatch.derflash.com"
 export const API_URL = 
- env == "dev" ? isNative ? "http://192.168.18.3:5001/api" : "http://localhost:5001/api" :
+ env == "dev" ? isNative ? "http://192.168.18.3:5007/api" : "http://localhost:5007/api" :
   // env == "dev" ? true ? "https://scanwatch-api.derflash.com/api" : "http://localhost:5001/api" :
    env == "test" ? "https://scanwatch-api.derflash.com/api" :
                   "https://scanwatch-api.derflash.com/api";
